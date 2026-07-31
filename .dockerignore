@@ -1,0 +1,8 @@
+.git
+.gradle
+.idea
+build
+vault
+docker-compose.yaml
+HELP.md
+*.md

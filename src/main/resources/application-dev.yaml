@@ -1,0 +1,23 @@
+spring:
+  config:
+    import: "optional:vault://"
+  application:
+    name: spring-bill
+  cloud:
+    vault:
+      uri: http://localhost:8200
+      authentication: TOKEN
+      token: root
+      kv:
+        enabled: true
+        backend: secret
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+bill:
+  schedule:
+    sync-cron: "0 30 1 * * *"
+    delete-cron: "0 0 1 1 * *"
+    monthly-summary-cron: "0 0 2 1 * *"
+    sync-lookback-weeks: 156

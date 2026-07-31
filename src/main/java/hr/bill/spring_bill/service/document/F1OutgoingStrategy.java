@@ -1,0 +1,283 @@
+package hr.bill.spring_bill.service.document;
+
+import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
+import hr.bill.spring_bill.clients.eposlovanje_util.EposlovanjeUtilClient;
+import hr.bill.spring_bill.clients.f1_web.F1WebClient;
+import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.dao.BillRepository;
+import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
+import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.ApiResponse;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.PaymentMethod;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.UnitOfMeasure;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.CreateReceiptDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.CreateReceiptItemDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.GetReceiptsQuery;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.FiscalizationResultDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptListResultDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptSummaryDto;
+import hr.bill.spring_bill.dto.web.BillReportType;
+import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
+import hr.bill.spring_bill.dto.web.bill.BillResponse;
+import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.b2c.F1BillRequest;
+import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
+import hr.bill.spring_bill.exception.NotFoundException;
+import hr.bill.spring_bill.mapper.BillEntityMapper;
+import hr.bill.spring_bill.mapper.BillInfoMapper;
+import hr.bill.spring_bill.mapper.CamtStatementMapper;
+import hr.bill.spring_bill.mapper.PaymentInfoMapper;
+import hr.bill.spring_bill.mapper.ReceiptBillRequestMapper;
+import hr.bill.spring_bill.model.BankTransactionEntity;
+import hr.bill.spring_bill.model.BillEntity;
+import hr.bill.spring_bill.model.enums.BillDocumentStatus;
+import hr.bill.spring_bill.model.enums.BillType;
+import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.service.HrPaymentReferenceService;
+import hr.bill.spring_bill.xml.camt.model.CamtDocument;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.MethodInvocationException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+@Component
+@RequiredArgsConstructor
+public class F1OutgoingStrategy implements BillStrategy {
+
+    private final F1WebClient f1WebClient;
+
+    private final EposlovanjeUtilClient eposlovanjeUtilClient;
+
+    private final BillPdfClient billPdfClient;
+
+    private final PaymentInfoMapper paymentInfoMapper;
+
+    private final ReceiptBillRequestMapper receiptBillRequestMapper;
+
+    private final BillEntityMapper billEntityMapper;
+
+    private final BillInfoMapper billInfoMapper;
+
+    private final SupplierProperties supplierProperties;
+
+    private final CamtStatementMapper camtStatementMapper;
+
+    private final PaymentReferenceMatcher paymentReferenceMatcher;
+
+    @Value("${bill.schedule.sync-lookback-weeks}")
+    private long syncLookbackWeeks;
+
+
+    private final BillRepository repository;
+
+    @Override
+    public BillReportType getType() {
+        return BillReportType.F1_OUTGOING;
+    }
+
+    @Override
+    public List<BillResponse> getBills() {
+        List<BillEntity> bills = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F1_BILL);
+        return billEntityMapper.toBillResponseList(bills);
+    }
+
+    @Override
+    public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        LocalDateTime from = monthStart.atStartOfDay();
+        LocalDateTime to = monthStart.plusMonths(1).atStartOfDay();
+        List<ReceiptSummaryDto> receipts = f1WebClient.getReceiptsByDateRange(
+                from.format(DateTimeFormatter.ISO_DATE_TIME),
+                to.format(DateTimeFormatter.ISO_DATE_TIME));
+        Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        // The F1 web API's date-range filter isn't reliable, so re-check locally before summing,
+        // the same way sync() re-validates results against its threshold.
+        BigDecimal paid = BigDecimal.ZERO;
+        BigDecimal unpaid = BigDecimal.ZERO;
+        for (ReceiptSummaryDto r : receipts) {
+            LocalDateTime issueDateTime = LocalDateTime.parse(r.issueDateTime());
+            if (issueDateTime.isBefore(from) || !issueDateTime.isBefore(to)) continue;
+            BigDecimal amount = BigDecimal.valueOf(r.grandTotal());
+            if (paymentReferenceMatcher.isPaid(paidReferences, r.formattedReceiptNumber())) {
+                paid = paid.add(amount);
+            } else {
+                unpaid = unpaid.add(amount);
+            }
+        }
+        return new PaidUnpaidTotals(paid, unpaid);
+    }
+
+    @Override
+    public Optional<LocalDate> findEarliestBillMonth() {
+        return f1WebClient.getReceiptsByDateRange(null, null).stream()
+                .map(r -> LocalDateTime.parse(r.issueDateTime()))
+                .min(LocalDateTime::compareTo)
+                .map(dt -> dt.toLocalDate().withDayOfMonth(1));
+    }
+
+    @Override
+    public BillDocument createDocument(String id) {
+        ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
+        ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(
+                supplierProperties, receiptDto, "HR00"));
+
+        BillRequest billRequest = receiptBillRequestMapper.toBillRequest(receiptDto, apiResponse.message());
+        return BillDocument.builder()
+                .filename(receiptDto.formattedReceiptNumber().replace("/", "-").replace("\\", "-"))
+                .content(billPdfClient.renderBill(billRequest))
+                .build();
+    }
+
+    @Override
+    public BillResponse createBill(BaseBillRequest request) {
+        if(request instanceof F1BillRequest f1BillRequest) {
+            ReceiptDto receiptDto = f1WebClient.createReceipt(CreateReceiptDto.builder()
+                    .businessId(17234)
+                    .issueDateTime(LocalDateTime.of(f1BillRequest.getBillDate(), f1BillRequest.getBillTime())
+                            .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                    .paymentMethod(PaymentMethod.BankTransfer)
+                    .operatorOib(supplierProperties.contactOib())
+                    .notes(f1BillRequest.getNote() == null || f1BillRequest.getNote().isBlank() ? null : f1BillRequest.getNote())
+                    .paymentDueDate(f1BillRequest.getDueDate().toString())
+                    .buyerName(f1BillRequest.getBuyerName())
+                    .buyerOib(f1BillRequest.getBuyerOib())
+                    .buyerAddress(f1BillRequest.getBuyerAddress())
+                    .buyerCity(f1BillRequest.getBuyerCity())
+                    .buyerPostalCode(f1BillRequest.getBuyerPostalCode())
+                    .items(List.of(CreateReceiptItemDto.builder()
+                            .name(f1BillRequest.getBillItemName())
+                            .description(f1BillRequest.getBillItemDescription())
+                            .quantity(1.0)
+                            .unitPrice(f1BillRequest.getBaseAmount().doubleValue())
+                            .taxRate(f1BillRequest.getTaxRate())
+                            .unitOfMeasure(UnitOfMeasure.Kom)
+                            .build()))
+                    .autoFiscalize(true)
+                    .build());
+            BillEntity billEntity = repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
+            return billEntityMapper.toBillResponse(billEntity);
+        }
+        return null;
+    }
+
+    @Override
+    public BillInfoResponse getBillInfo(String id) {
+        ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
+        return billInfoMapper.toBillInfoResponse(supplierProperties, receiptDto);
+    }
+
+    @Override
+    public BillResponse cancel(String originalId, String newId) {
+        FiscalizationResultDto cancelResponse = f1WebClient.storno(Integer.parseInt(originalId));
+        BillEntity billEntity = repository.save(billEntityMapper.toBillEntity(cancelResponse.receipt(), BillType.F1_BILL));
+        return billEntityMapper.toBillResponse(billEntity);
+    }
+
+    @Override
+    public BillReviewResponse reviewBill(BaseBillRequest request) {
+        if (request instanceof F1BillRequest f1BillRequest) {
+            ReceiptListResultDto lastBills = f1WebClient.getReceipts(GetReceiptsQuery.builder()
+                    .page(1)
+                    .pageSize(1)
+                    .searchTerm("/2")
+                    .sortDescending(true)
+                    .build());
+            int receiptNumber = lastBills.items().stream()
+                    .findFirst()
+                    .map(ReceiptSummaryDto::receiptNumber)
+                    .orElse(0);
+            ComputedAmounts computedAmounts = computeAmounts(f1BillRequest);
+            return BillReviewResponse.builder()
+                    .billNumber(String.format("%d/1/2", receiptNumber + 1))
+                    .billDate(f1BillRequest.getBillDate())
+                    .billTime(f1BillRequest.getBillTime())
+                    .dueDate(f1BillRequest.getDueDate())
+                    .name(f1BillRequest.getBillItemName())
+                    .description(f1BillRequest.getBillItemDescription())
+                    .note(f1BillRequest.getNote())
+                    .buyerOib(f1BillRequest.getBuyerOib())
+                    .buyerName(f1BillRequest.getBuyerName())
+                    .buyerAddress(f1BillRequest.getBuyerAddress())
+                    .buyerCity(f1BillRequest.getBuyerCity())
+                    .buyerPostalZone(f1BillRequest.getBuyerPostalCode())
+                    .baseAmount(computedAmounts.baseAmount())
+                    .taxAmount(computedAmounts.taxAmount())
+                    .totalAmount(computedAmounts.totalAmount())
+                    .build();
+        }
+        return null;
+    }
+
+    @Override
+    public void sync() {
+        LocalDateTime threshold = repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F1_BILL)
+                .map(b -> b.getBillDate().plusMinutes(10))
+                .orElseGet(() -> LocalDate.now().withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay());
+        GetReceiptsQuery query = GetReceiptsQuery.builder()
+                .dateFrom(threshold.format(DateTimeFormatter.ISO_DATE_TIME))
+                .build();
+        f1WebClient.getReceipts(query).items().stream()
+                .filter(ri -> LocalDateTime.parse(ri.issueDateTime()).isAfter(threshold))
+                .forEach((ri) -> {
+                    ReceiptDto receiptDto = f1WebClient.getReceipt(ri.id());
+                    repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
+                });
+    }
+
+    @Override
+    public void deleteAll() {
+        repository.deleteAllByBillType(BillType.F1_BILL);
+    }
+
+    @Override
+    public void incrementSentCount(String id) {
+        BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.F1_BILL)
+                .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
+        billEntity.setSentCount(billEntity.getSentCount() + 1);
+        repository.save(billEntity);
+    }
+
+    @Override
+    public int markPaidFromBankStatement(CamtDocument statement) {
+        List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(statement, null);
+        List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F1_BILL);
+        int updated = 0;
+        for (BankTransactionEntity tx : transactions) {
+            if (tx.getCreditDebitIndicator() != CreditDebitIndicator.CRDT) continue;
+            if (!supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban())) continue;
+            for (BillEntity bill : candidates) {
+                if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
+                    bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
+                    repository.save(bill);
+                    updated++;
+                    break;
+                }
+            }
+        }
+        return updated;
+    }
+
+    private String expectedReference(BillEntity bill) {
+        return bill.getPaymentReference() != null
+                ? bill.getPaymentReference()
+                : HrPaymentReferenceService.buildReference(bill.getFullBillId());
+    }
+
+    private ComputedAmounts computeAmounts(F1BillRequest request) {
+        BigDecimal baseAmount = request.getBaseAmount().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = baseAmount.multiply(BigDecimal.valueOf(request.getTaxRate().getValue()))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal totalAmount = baseAmount.add(taxAmount);
+        return new ComputedAmounts(baseAmount, taxAmount, totalAmount);
+    }
+
+    private record ComputedAmounts(BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount) {}
+}

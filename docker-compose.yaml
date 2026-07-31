@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: spring-bill-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spring_bill
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - spring-bill-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spring_bill"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: spring-bill-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    entrypoint: ["/bin/sh", "/vault/entrypoint.sh"]
+    ports:
+      - "8200:8200"
+    volumes:
+      - spring-bill-vault-data:/vault/file
+      - ./vault/vault-config.hcl:/vault/config/vault-config.hcl:ro
+      - ./vault/entrypoint.sh:/vault/entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  spring-bill-postgres-data:
+  spring-bill-vault-data:

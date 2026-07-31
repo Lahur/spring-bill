@@ -1,0 +1,72 @@
+package hr.bill.spring_bill.dto.eposlovanje.f1_web.response;
+
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ConsumptionTaxDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.FiscalStatus;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.OtherTaxDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.PaymentMethod;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptItemDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptType;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.SurchargeDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.TaxBreakdownDto;
+
+import java.util.List;
+
+public record ReceiptDto(
+        Integer id,
+        Integer businessId,
+        String businessName,
+        Integer receiptNumber,
+        String formattedReceiptNumber,
+        String issueDateTime,
+        PaymentMethod paymentMethod,
+        String paymentMethodDisplay,
+        ReceiptType receiptType,
+        Double totalAmount,
+        Double taxAmount,
+        Double grandTotal,
+        String zki,
+        String jir,
+        FiscalStatus fiscalStatus,
+        String fiscalStatusDisplay,
+        Boolean isFiscalized,
+        Boolean canRetry,
+        Boolean canFiscalize,
+        Boolean isLateDelivery,
+        Integer retryCount,
+        String lastRetryAt,
+        String lastError,
+        Boolean hasRestrictiveError,
+        String fiscalizedAt,
+        String operatorOib,
+        String operatorLabel,
+        String businessUnitLabel,
+        String cashRegisterLabel,
+        String businessOib,
+        String notes,
+        String paymentDueDate,
+        String buyerName,
+        String buyerOib,
+        String buyerAddress,
+        String buyerCity,
+        String buyerPostalCode,
+        String buyerEmail,
+        Boolean isB2BInvoice,
+        Integer referencedReceiptId,
+        String referencedReceiptJir,
+        String referencedReceiptFormattedNumber,
+        Boolean isCreditNote,
+        Boolean hasCreditNote,
+        Boolean canDeleteCreditNote,
+        List<ReceiptItemDto> items,
+        List<TaxBreakdownDto> taxBreakdown,
+        Double marginAmount,
+        Double vatExemptAmount,
+        Double nonTaxableAmount,
+        List<ConsumptionTaxDto> consumptionTaxes,
+        List<OtherTaxDto> otherTaxes,
+        List<SurchargeDto> surcharges,
+        String paragonReceiptNumber,
+        String specialPurpose,
+        String createdAt,
+        String updatedAt
+) {}
