@@ -6,7 +6,7 @@ COPY gradle gradle
 RUN ./gradlew --no-daemon dependencies || true
 
 COPY src src
-RUN ./gradlew --no-daemon bootJar
+RUN ./gradlew --no-daemon bootJar && ls -1 build/libs/*.jar
 
 FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app

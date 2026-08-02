@@ -65,8 +65,7 @@ spec:
                       --destination=$REGISTRY/$IMAGE:$BUILD_NUMBER \
                       --destination=$REGISTRY/$IMAGE:latest \
                       --insecure \
-                      --skip-tls-verify \
-                      --cache=true
+                      --skip-tls-verify
                     '''
                 }
             }
