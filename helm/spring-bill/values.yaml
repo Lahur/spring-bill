@@ -1,0 +1,35 @@
+image:
+  repository: docker-registry.registry.svc.cluster.local:5000/spring-bill
+  tag: latest
+  pullPolicy: Always
+
+app:
+  replicaCount: 1
+  containerPort: 8080
+  springProfile: prod
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 750m
+      memory: 768Mi
+
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30081
+
+postgres:
+  image: postgres:18.4
+  db: spring_bill
+  user: postgres
+  password: postgres
+  storage: 1Gi
+
+vault:
+  image: hashicorp/vault:latest
+  # Fixed dev root token created by entrypoint.sh on first run - must match
+  # what the app is told to use via the VAULT_TOKEN env var.
+  token: root
+  storage: 1Gi

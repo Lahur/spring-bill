@@ -29,8 +29,8 @@ public class F2BillRequest extends BaseBillRequest {
     @NotNull(message = "Vat category can't be null")
     private VatCategory vatCategory;
 
-    @Schema(description = "Reference to a bill", example = "indent P-1-100")
-    private String reference;
+    @Schema(description = "Order number this bill refers to", example = "indent P-1-100")
+    private String orderNumber;
 
     @Schema(description = "Buyers name", example = "PEVEX d.d.")
     private String buyerName;
@@ -43,4 +43,10 @@ public class F2BillRequest extends BaseBillRequest {
 
     @Schema(description = "Buyers residental city postal code", example = "10360")
     private String buyerPostalCode;
+
+    @Schema(hidden = true)
+    private byte[] orderDocumentBytes;
+
+    @Schema(hidden = true)
+    private String orderDocumentFilename;
 }

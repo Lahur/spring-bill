@@ -1,5 +1,7 @@
 // Requires the Kubernetes plugin, and Jenkins running in-cluster under a
-// service account allowed to create pods (see cicd namespace setup).
+// service account allowed to create pods (see cicd namespace setup) and to
+// manage deployments/services/secrets/configmaps/pvcs in the "local"
+// namespace (see helm/spring-bill chart).
 pipeline {
 
     agent {
@@ -18,13 +20,23 @@ spec:
     volumeMounts:
     - name: workspace-volume
       mountPath: /workspace
+  - name: helm
+    image: alpine/helm:3.15.4
+    command:
+    - sleep
+    args:
+    - infinity
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
 '''
         }
     }
 
     environment {
-        REGISTRY = "docker-registry.registry.svc.cluster.local:5000"
-        IMAGE    = "spring-bill"
+        REGISTRY  = "docker-registry.registry.svc.cluster.local:5000"
+        IMAGE     = "spring-bill"
+        NAMESPACE = "local"
     }
 
     options {
@@ -59,11 +71,23 @@ spec:
                 }
             }
         }
+
+        stage('Deploy') {
+            steps {
+                container('helm') {
+                    sh '''
+                    helm upgrade --install $IMAGE helm/spring-bill \
+                      -n $NAMESPACE \
+                      --set image.tag=$BUILD_NUMBER
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "Pushed ${REGISTRY}/${IMAGE}:${BUILD_NUMBER} and :latest"
+            echo "Pushed ${REGISTRY}/${IMAGE}:${BUILD_NUMBER} and :latest, deployed to ${NAMESPACE}"
         }
     }
 }

@@ -55,6 +55,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -227,7 +228,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                     .description(f2BillRequest.getBillItemDescription())
                     .pdvType(f2BillRequest.getVatCategory())
                     .profile(f2BillRequest.getProfile())
-                    .reference(f2BillRequest.getReference())
+                    .orderNumber(f2BillRequest.getOrderNumber())
                     .note(f2BillRequest.getNote());
             businessEntityService.findByOib(f2BillRequest.getBuyerOib()).ifPresentOrElse(
                     be -> builder.buyerOib(be.oib())
@@ -407,8 +408,8 @@ public class F2OutgoingStrategy implements BillStrategy {
                         .startDate(request.getBillDate().withDayOfMonth(1).format(dateFormat))
                         .endDate(request.getBillDate().format(dateFormat))
                         .build())
-                .orderReference(nullIfBlank(request.getReference()) != null
-                        ? UblOrderReference.builder().id(request.getReference()).build()
+                .orderReference(nullIfBlank(request.getOrderNumber()) != null
+                        ? UblOrderReference.builder().id(request.getOrderNumber()).build()
                         : null)
                 .accountingSupplierParty(buildSupplierParty())
                 .accountingCustomerParty(UblAccountingCustomerParty.builder()
@@ -510,12 +511,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                                     .build();
                         })
                         .toList())
-                .additionalDocumentReferences(List.of(UblAdditionalDocumentReference.builder()
-                        .id(String.valueOf(1))
-                        .attachment(UblAdditionalDocumentReference.Attachment.builder()
-                                .embeddedDocumentBinaryObject(createXmlReport(request, computed, businessEntity))
-                                .build())
-                        .build()))
+                .additionalDocumentReferences(buildAdditionalDocumentReferences(request, computed, businessEntity))
                 .build();
     }
 
@@ -707,6 +703,29 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .filename(filename)
                 .value(Base64.getEncoder().encodeToString(pdfBytes))
                 .build();
+    }
+
+    private List<UblAdditionalDocumentReference> buildAdditionalDocumentReferences(F2BillRequest request, ComputedAmounts computed, Optional<BusinessEntity> businessEntity) {
+        List<UblAdditionalDocumentReference> references = new ArrayList<>();
+        references.add(UblAdditionalDocumentReference.builder()
+                .id("1")
+                .attachment(UblAdditionalDocumentReference.Attachment.builder()
+                        .embeddedDocumentBinaryObject(createXmlReport(request, computed, businessEntity))
+                        .build())
+                .build());
+        if (request.getOrderDocumentBytes() != null) {
+            references.add(UblAdditionalDocumentReference.builder()
+                    .id("2")
+                    .attachment(UblAdditionalDocumentReference.Attachment.builder()
+                            .embeddedDocumentBinaryObject(UblAdditionalDocumentReference.Attachment.EmbeddedDocumentBinaryObject.builder()
+                                    .mimeCode("application/pdf")
+                                    .filename(request.getOrderDocumentFilename())
+                                    .value(Base64.getEncoder().encodeToString(request.getOrderDocumentBytes()))
+                                    .build())
+                            .build())
+                    .build());
+        }
+        return references;
     }
 
     private static String nullIfBlank(String s) {

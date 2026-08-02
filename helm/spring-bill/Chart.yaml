@@ -1,0 +1,6 @@
+apiVersion: v2
+name: spring-bill
+description: spring-bill app plus its Postgres and Vault dependencies, for the k3s "local" namespace
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

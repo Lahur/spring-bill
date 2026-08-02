@@ -232,7 +232,7 @@ public class F2ReportStrategy implements BillStrategy {
                     .description(reportBillRequest.getBillItemDescription())
                     .pdvType(reportBillRequest.getVatCategory())
                     .profile(reportBillRequest.getProfile())
-                    .reference(reportBillRequest.getReference())
+                    .orderNumber(reportBillRequest.getReference())
                     .note(reportBillRequest.getNote())
                     .buyerOib(reportBillRequest.getBuyerOib())
                     .buyerName(reportBillRequest.getBuyerName())

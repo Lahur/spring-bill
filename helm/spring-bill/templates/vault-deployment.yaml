@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-vault
+  labels:
+    app: {{ .Release.Name }}-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-vault
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-vault
+    spec:
+      containers:
+        - name: vault
+          image: {{ .Values.vault.image }}
+          command: ["/bin/sh", "/vault/entrypoint.sh"]
+          ports:
+            - containerPort: 8200
+          volumeMounts:
+            - name: config
+              mountPath: /vault/config/vault-config.hcl
+              subPath: vault-config.hcl
+            - name: config
+              mountPath: /vault/entrypoint.sh
+              subPath: entrypoint.sh
+            - name: data
+              mountPath: /vault/file
+          readinessProbe:
+            tcpSocket:
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8200
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-vault
+            defaultMode: 0755
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-vault

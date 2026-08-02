@@ -31,8 +31,8 @@ public record BillReviewResponse(
         @Schema(description = "Additional note for the bill", example = "Some amount added")
         String note,
 
-        @Schema(description = "Reference to a bill", example = "indent P-1-100")
-        String reference,
+        @Schema(description = "Order number this bill refers to", example = "indent P-1-100")
+        String orderNumber,
 
         @Schema(description = "Buyers OIB", example = "73660371074")
         String buyerOib,
