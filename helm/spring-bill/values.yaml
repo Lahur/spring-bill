@@ -20,6 +20,12 @@ service:
   port: 8080
   nodePort: 30081
 
+metrics:
+  enabled: true
+  portName: http
+  path: /actuator/prometheus
+  interval: 30s
+
 postgres:
   image: postgres:18.4
   db: spring_bill
