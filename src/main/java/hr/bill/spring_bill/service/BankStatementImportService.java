@@ -10,6 +10,7 @@ import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.service.document.BillStrategyFactory;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BankStatementImportService {
@@ -38,14 +40,20 @@ public class BankStatementImportService {
     private final BankStatementMapper bankStatementMapper;
 
     public List<BankStatementResponse> findAll() {
-        return bankStatementMapper.toBankStatementResponseList(bankStatementRepository.findAllByOrderByCreatedAtDesc());
+        log.debug("Fetching all bank statements");
+        List<BankStatementResponse> result =
+                bankStatementMapper.toBankStatementResponseList(bankStatementRepository.findAllByOrderByCreatedAtDesc());
+        log.debug("Found {} bank statements", result.size());
+        return result;
     }
 
     public BankStatementResponse importStatement(MultipartFile file) {
+        log.info("Importing bank statement file '{}'", file.getOriginalFilename());
         return importStatementXml(readXml(file));
     }
 
     public List<BankStatementResponse> importStatements(List<MultipartFile> files) {
+        log.info("Importing {} bank statement file(s)", files.size());
         List<BankStatementResponse> imported = new ArrayList<>();
         for (MultipartFile file : files) {
             String filename = file.getOriginalFilename();
@@ -55,15 +63,18 @@ public class BankStatementImportService {
                 imported.add(importStatement(file));
             }
         }
+        log.info("Imported {} bank statement(s) from {} file(s)", imported.size(), files.size());
         return imported;
     }
 
     public List<BankStatementResponse> importStatementsZip(MultipartFile zipFile) {
+        log.info("Importing bank statements from zip file '{}'", zipFile.getOriginalFilename());
         List<BankStatementResponse> imported = new ArrayList<>();
         try (ZipInputStream zis = new ZipInputStream(zipFile.getInputStream())) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (!entry.isDirectory() && entry.getName().toLowerCase().endsWith(".xml")) {
+                    log.debug("Importing zip entry '{}'", entry.getName());
                     String xml = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
                     imported.add(importStatementXml(xml));
                 }
@@ -72,6 +83,7 @@ public class BankStatementImportService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        log.info("Imported {} bank statement(s) from zip file '{}'", imported.size(), zipFile.getOriginalFilename());
         return imported;
     }
 
@@ -82,8 +94,10 @@ public class BankStatementImportService {
 
         List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(document, statement.getId());
         bankTransactionRepository.saveAll(transactions);
+        log.debug("Saved bank statement {} with {} transaction(s)", statement.getId(), transactions.size());
 
-        billStrategyFactory.markPaidFromBankStatement(document);
+        int matched = billStrategyFactory.markPaidFromBankStatement(document);
+        log.info("Bank statement {} matched {} bill(s) as paid", statement.getId(), matched);
 
         return bankStatementMapper.toBankStatementResponse(statement);
     }

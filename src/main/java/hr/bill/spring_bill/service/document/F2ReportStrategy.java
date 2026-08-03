@@ -45,6 +45,7 @@ import hr.bill.spring_bill.service.UblXmlService;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -59,6 +60,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class F2ReportStrategy implements BillStrategy {
@@ -107,6 +109,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        log.debug("Computing F2 report monthly totals for {}", monthStart);
         // F2_REPORT has no upstream source - sync() is a no-op for it and it's excluded from the
         // yearly deleteAllExceptReports() wipe, so the local table is the only place it ever lives.
         List<BillEntity> bills = repository.findAllByBillTypeAndBillDateBetween(
@@ -132,6 +135,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        log.debug("Creating document for F2 report bill {}", id);
         UUID billId = UUID.fromString(id);
         BillEntity billEntity = repository.findById(billId)
                 .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
@@ -164,6 +168,7 @@ public class F2ReportStrategy implements BillStrategy {
     @Override
     public BillResponse createBill(BaseBillRequest request) {
         if (request instanceof ReportBillRequest reportBillRequest) {
+            log.info("Creating F2 report bill {} for buyer OIB {}", reportBillRequest.getBillId(), reportBillRequest.getBuyerOib());
             ComputedAmounts computed = computeAmounts(reportBillRequest, Boolean.FALSE);
             UblInvoice invoice = toUblInvoice(reportBillRequest, computed);
             String xmlRequest = ublXmlService.generateXml(invoice);
@@ -182,6 +187,7 @@ public class F2ReportStrategy implements BillStrategy {
                     billInfoEntityMapper.toBillInfoEntity(invoice, billEntity.getId()));
             billItemRepository.saveAll(
                     billInfoEntityMapper.toBillItemEntities(invoice.getInvoiceLines(), billInfoEntity.getId()));
+            log.info("Created F2 report bill {}", billEntity.getFullBillId());
             return billEntityMapper.toBillResponse(billEntity);
         }
         return null;
@@ -189,6 +195,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public BillInfoResponse getBillInfo(String id) {
+        log.debug("Fetching bill info for F2 report bill {}", id);
         UUID billId = UUID.fromString(id);
         BillInfoEntity billInfoEntity = billInfoRepository.findByBillId(billId)
                 .orElseThrow(() -> new NotFoundException("Bill info not found for id: " + id));
@@ -198,6 +205,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public BillResponse cancel(String originalId, String newId) {
+        log.info("Cancelling F2 report bill {} with replacement {}", originalId, newId);
         long parsedOriginalId = Long.parseLong(originalId);
         int parsedNewId = Integer.parseInt(newId);
         DocumentGetResponse response = eposlovanjeClient.getDocument(parsedOriginalId);
@@ -222,6 +230,7 @@ public class F2ReportStrategy implements BillStrategy {
     @Override
     public BillReviewResponse reviewBill(BaseBillRequest request) {
         if (request instanceof ReportBillRequest reportBillRequest) {
+            log.debug("Reviewing F2 report bill request for buyer OIB {}", reportBillRequest.getBuyerOib());
             ComputedAmounts computedAmounts = computeAmounts(reportBillRequest, Boolean.FALSE);
             return BillReviewResponse.builder()
                     .billNumber(String.format("%d/1/1", reportBillRequest.getBillId()))
@@ -254,11 +263,13 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public void deleteAll() {
+        log.debug("Deleting all F2 report bills");
         repository.deleteAllByBillType(BillType.F2_REPORT);
     }
 
     @Override
     public void incrementSentCount(String id) {
+        log.debug("Incrementing sent count for F2 report bill {}", id);
         BillEntity billEntity = repository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
         billEntity.setSentCount(billEntity.getSentCount() + 1);
@@ -282,6 +293,7 @@ public class F2ReportStrategy implements BillStrategy {
                 }
             }
         }
+        log.info("Marked {} F2 report bill(s) as paid from bank statement", updated);
         return updated;
     }
 

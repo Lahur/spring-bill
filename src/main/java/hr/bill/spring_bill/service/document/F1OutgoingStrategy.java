@@ -36,6 +36,7 @@ import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.MethodInvocationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -49,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class F1OutgoingStrategy implements BillStrategy {
@@ -92,6 +94,7 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        log.debug("Computing F1 monthly totals for {}", monthStart);
         LocalDateTime from = monthStart.atStartOfDay();
         LocalDateTime to = monthStart.plusMonths(1).atStartOfDay();
         List<ReceiptSummaryDto> receipts = f1WebClient.getReceiptsByDateRange(
@@ -125,6 +128,7 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        log.debug("Creating document for F1 bill {}", id);
         ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
         ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(
                 supplierProperties, receiptDto, "HR00"));
@@ -139,6 +143,7 @@ public class F1OutgoingStrategy implements BillStrategy {
     @Override
     public BillResponse createBill(BaseBillRequest request) {
         if(request instanceof F1BillRequest f1BillRequest) {
+            log.info("Creating F1 bill for buyer OIB {}", f1BillRequest.getBuyerOib());
             ReceiptDto receiptDto = f1WebClient.createReceipt(CreateReceiptDto.builder()
                     .businessId(17234)
                     .issueDateTime(LocalDateTime.of(f1BillRequest.getBillDate(), f1BillRequest.getBillTime())
@@ -163,6 +168,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                     .autoFiscalize(true)
                     .build());
             BillEntity billEntity = repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
+            log.info("Created F1 bill {}", billEntity.getFullBillId());
             return billEntityMapper.toBillResponse(billEntity);
         }
         return null;
@@ -170,12 +176,14 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillInfoResponse getBillInfo(String id) {
+        log.debug("Fetching bill info for F1 bill {}", id);
         ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
         return billInfoMapper.toBillInfoResponse(supplierProperties, receiptDto);
     }
 
     @Override
     public BillResponse cancel(String originalId, String newId) {
+        log.info("Cancelling F1 bill {} with replacement {}", originalId, newId);
         FiscalizationResultDto cancelResponse = f1WebClient.storno(Integer.parseInt(originalId));
         BillEntity billEntity = repository.save(billEntityMapper.toBillEntity(cancelResponse.receipt(), BillType.F1_BILL));
         return billEntityMapper.toBillResponse(billEntity);
@@ -184,6 +192,7 @@ public class F1OutgoingStrategy implements BillStrategy {
     @Override
     public BillReviewResponse reviewBill(BaseBillRequest request) {
         if (request instanceof F1BillRequest f1BillRequest) {
+            log.debug("Reviewing F1 bill request for buyer OIB {}", f1BillRequest.getBuyerOib());
             ReceiptListResultDto lastBills = f1WebClient.getReceipts(GetReceiptsQuery.builder()
                     .page(1)
                     .pageSize(1)
@@ -218,27 +227,32 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public void sync() {
+        log.debug("Syncing F1 bills");
         LocalDateTime threshold = repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F1_BILL)
                 .map(b -> b.getBillDate().plusMinutes(10))
                 .orElseGet(() -> LocalDate.now().withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay());
         GetReceiptsQuery query = GetReceiptsQuery.builder()
                 .dateFrom(threshold.format(DateTimeFormatter.ISO_DATE_TIME))
                 .build();
-        f1WebClient.getReceipts(query).items().stream()
+        List<ReceiptSummaryDto> toSync = f1WebClient.getReceipts(query).items().stream()
                 .filter(ri -> LocalDateTime.parse(ri.issueDateTime()).isAfter(threshold))
-                .forEach((ri) -> {
-                    ReceiptDto receiptDto = f1WebClient.getReceipt(ri.id());
-                    repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
-                });
+                .toList();
+        toSync.forEach((ri) -> {
+            ReceiptDto receiptDto = f1WebClient.getReceipt(ri.id());
+            repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
+        });
+        log.info("Synced {} F1 bill(s)", toSync.size());
     }
 
     @Override
     public void deleteAll() {
+        log.debug("Deleting all F1 bills");
         repository.deleteAllByBillType(BillType.F1_BILL);
     }
 
     @Override
     public void incrementSentCount(String id) {
+        log.debug("Incrementing sent count for F1 bill {}", id);
         BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.F1_BILL)
                 .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
         billEntity.setSentCount(billEntity.getSentCount() + 1);
@@ -262,6 +276,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                 }
             }
         }
+        log.info("Marked {} F1 bill(s) as paid from bank statement", updated);
         return updated;
     }
 

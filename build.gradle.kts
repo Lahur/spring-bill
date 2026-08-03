@@ -20,6 +20,8 @@ repositories {
 dependencies {
 	implementation(platform("org.springdoc:springdoc-openapi-bom:3.0.3"))
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("io.micrometer:micrometer-registry-prometheus")
 	implementation("org.springframework.cloud:spring-cloud-starter-openfeign:5.0.2")
 	implementation("org.springframework.cloud:spring-cloud-starter-vault-config:5.0.2")
 	implementation("org.springframework.boot:spring-boot-starter-validation")

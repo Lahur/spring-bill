@@ -4,12 +4,14 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import hr.bill.spring_bill.xml.camt.CamtNs;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.StringWriter;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CamtXmlService {
@@ -17,6 +19,7 @@ public class CamtXmlService {
     private final XmlMapper xmlMapper;
 
     public String generateXml(CamtDocument document) {
+        log.debug("Generating CAMT XML");
         try {
             StringWriter sw = new StringWriter();
             XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
@@ -34,6 +37,7 @@ public class CamtXmlService {
     }
 
     public CamtDocument parse(String xml) {
+        log.debug("Parsing CAMT XML ({} chars)", xml.length());
         try {
             return xmlMapper.readValue(xml, CamtDocument.class);
         } catch (Exception e) {

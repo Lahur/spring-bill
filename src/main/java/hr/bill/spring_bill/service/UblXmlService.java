@@ -4,12 +4,14 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import hr.bill.spring_bill.xml.ubl.UblNs;
 import hr.bill.spring_bill.xml.ubl.model.UblInvoice;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.StringWriter;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UblXmlService {
@@ -17,6 +19,7 @@ public class UblXmlService {
     private final XmlMapper xmlMapper;
 
     public String generateXml(UblInvoice invoice) {
+        log.debug("Generating UBL XML for invoice {}", invoice.getId());
         try {
             StringWriter sw = new StringWriter();
             XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
@@ -39,6 +42,7 @@ public class UblXmlService {
     }
 
     public UblInvoice parse(String xml) {
+        log.debug("Parsing UBL XML ({} chars)", xml.length());
         try {
             return xmlMapper.readValue(xml, UblInvoice.class);
         } catch (Exception e) {

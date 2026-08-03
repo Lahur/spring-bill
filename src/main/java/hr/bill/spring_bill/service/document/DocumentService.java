@@ -5,6 +5,7 @@ import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
 import hr.bill.spring_bill.dto.web.SendBillReportItem;
 import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
@@ -28,6 +30,8 @@ public class DocumentService {
     private final BillStrategyFactory billStrategyFactory;
 
     public void generateAndSendDocuments(SendBillReportsRequest sendBillReportsRequest) {
+        log.info("Generating and sending {} document(s) to {}",
+                sendBillReportsRequest.reports().size(), sendBillReportsRequest.email());
         Path tempDir;
         Path pdfsDir;
         try {
@@ -67,6 +71,7 @@ public class DocumentService {
                 .fileContent(fileContent)
                 .build();
         mailBillClient.sendMail(sendMailRequest);
+        log.info("Sent merged document mail to {}", sendBillReportsRequest.email());
 
         for (SendBillReportItem item : sendBillReportsRequest.reports()) {
             billStrategyFactory.incrementSentCount(item.type(), item.id());

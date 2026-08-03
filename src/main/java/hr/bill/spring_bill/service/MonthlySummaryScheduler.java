@@ -6,6 +6,7 @@ import hr.bill.spring_bill.model.MonthlySummaryEntity;
 import hr.bill.spring_bill.service.document.BillStrategy;
 import hr.bill.spring_bill.service.document.PaidUnpaidTotals;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MonthlySummaryScheduler {
@@ -25,6 +27,7 @@ public class MonthlySummaryScheduler {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
+        log.info("Application ready, running monthly summary backfill check");
         backfillFromEarliestBills();
     }
 
@@ -36,6 +39,7 @@ public class MonthlySummaryScheduler {
                 .map(entity -> entity.getMonth().plusMonths(1))
                 .orElseGet(() -> currentMonth.minusMonths(1));
 
+        log.info("Filling missing monthly summaries from {} to {}", month, currentMonth);
         fillRange(month, currentMonth);
     }
 
@@ -46,6 +50,7 @@ public class MonthlySummaryScheduler {
      */
     public void backfillFromEarliestBills() {
         if (monthlySummaryRepository.count() > 0) {
+            log.debug("Monthly summaries already exist, skipping backfill");
             return;
         }
 
@@ -56,11 +61,13 @@ public class MonthlySummaryScheduler {
                 .min(LocalDate::compareTo)
                 .orElse(currentMonth.minusMonths(1));
 
+        log.info("Backfilling monthly summaries from earliest bill month {} to {}", earliestMonth, currentMonth);
         fillRange(earliestMonth, currentMonth);
     }
 
     private void fillRange(LocalDate from, LocalDate currentMonth) {
         for (LocalDate month = from; month.isBefore(currentMonth); month = month.plusMonths(1)) {
+            log.debug("Building monthly summary for {}", month);
             monthlySummaryRepository.save(buildSummary(month));
         }
     }

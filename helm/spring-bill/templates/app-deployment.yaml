@@ -35,12 +35,14 @@ spec:
             periodSeconds: 10
             failureThreshold: 24
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /actuator/health
               port: {{ .Values.app.containerPort }}
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /actuator/health
               port: {{ .Values.app.containerPort }}
             periodSeconds: 20
             failureThreshold: 3

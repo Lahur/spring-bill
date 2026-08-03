@@ -9,6 +9,7 @@ import hr.bill.spring_bill.dto.web.dashboard.MonthlySummaryResponse;
 import hr.bill.spring_bill.model.MonthlySummaryEntity;
 import hr.bill.spring_bill.model.enums.BillType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -30,6 +32,7 @@ public class DashboardService {
     private final MonthlySummaryRepository monthlySummaryRepository;
 
     public DashboardSummaryResponse getSummary() {
+        log.debug("Building dashboard summary for current month");
         LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         LocalDateTime to = from.plusMonths(1);
 
@@ -51,6 +54,7 @@ public class DashboardService {
     }
 
     public List<DailyTotalResponse> getDailySales(LocalDate from, LocalDate to) {
+        log.debug("Building daily sales totals from {} to {}", from, to);
         Map<LocalDate, BigDecimal> totalsByDay = billRepository
                 .sumDailyTotalsByBillTypeNot(BillType.INGOING_BILL.name(), from.atStartOfDay(), to.plusDays(1).atStartOfDay())
                 .stream()
@@ -67,6 +71,7 @@ public class DashboardService {
     }
 
     public List<MonthlySummaryResponse> getMonthlySummaries(int months) {
+        log.debug("Fetching last {} monthly summaries", months);
         List<MonthlySummaryEntity> entities = monthlySummaryRepository.findAllByOrderByMonthDesc(PageRequest.of(0, months));
         return entities.stream()
                 .sorted(Comparator.comparing(MonthlySummaryEntity::getMonth))

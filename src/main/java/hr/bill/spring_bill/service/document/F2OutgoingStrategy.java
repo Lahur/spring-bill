@@ -112,6 +112,7 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        log.debug("Computing F2 outgoing monthly totals for {}", monthStart);
         DocumentListParams params = DocumentListParams.builder()
                 .issuedFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .issuedTo(monthStart.plusMonths(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
@@ -140,6 +141,7 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        log.debug("Creating document for F2 outgoing bill {}", id);
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(supplierProperties, ublInvoice));
@@ -153,6 +155,7 @@ public class F2OutgoingStrategy implements BillStrategy {
     @Override
     public BillResponse createBill(BaseBillRequest request) {
         if (request instanceof F2BillRequest f2BillRequest) {
+                log.info("Creating F2 outgoing bill {} for buyer OIB {}", f2BillRequest.getBillId(), f2BillRequest.getBuyerOib());
                 BusinessCheckResponse businessCheckResponse = businessEntityService.checkByOib(f2BillRequest.getBuyerOib());
                 if(!businessCheckResponse.amsCheckResponse().publishedOnAms()) {
                     throw new IllegalArgumentException("Business entity failed AMS check");
@@ -180,6 +183,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                 BillEntity billEntity = billEntityMapper.toBillEntity(lastBill, BillType.F2_BILL);
                 billEntity.setPaymentReference(HrPaymentReferenceService.fullReference(invoice.getPaymentMeans().getPaymentId()));
                 billEntity = repository.save(billEntity);
+                log.info("Created F2 outgoing bill {}", billEntity.getFullBillId());
                 return billEntityMapper.toBillResponse(billEntity);
         }
         return null;
@@ -187,6 +191,7 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillInfoResponse getBillInfo(String id) {
+        log.debug("Fetching bill info for F2 outgoing bill {}", id);
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         return billInfoMapper.toBillInfoResponse(ublInvoice);
@@ -194,6 +199,7 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillResponse cancel(String originalId, String newId) {
+        log.info("Cancelling F2 outgoing bill {} with replacement {}", originalId, newId);
         long parsedOriginalId = Long.parseLong(originalId);
         int parsedNewId = Integer.parseInt(newId);
         DocumentGetResponse response = eposlovanjeClient.getDocument(parsedOriginalId);
@@ -219,6 +225,7 @@ public class F2OutgoingStrategy implements BillStrategy {
     @Override
     public BillReviewResponse reviewBill(BaseBillRequest request) {
         if (request instanceof F2BillRequest f2BillRequest) {
+            log.debug("Reviewing F2 outgoing bill request for buyer OIB {}", f2BillRequest.getBuyerOib());
             BillReviewResponse.BillReviewResponseBuilder builder = BillReviewResponse.builder()
                     .billNumber(String.format("%d/1/1", f2BillRequest.getBillId()))
                     .billDate(f2BillRequest.getBillDate())
@@ -253,6 +260,7 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public void sync() {
+        log.debug("Syncing F2 outgoing bills");
         DocumentListParams.DocumentListParamsBuilder builder =DocumentListParams.builder();
         repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F2_BILL).ifPresentOrElse((b) -> {
             builder.issuedFrom(b.getBillDate().plusMinutes(10).format(DateTimeFormatter.ISO_DATE_TIME));
@@ -269,6 +277,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .toList();
         logDuplicateSystemIds(billEntities);
         repository.saveAll(billEntities);
+        log.info("Synced {} F2 outgoing bill(s)", billEntities.size());
     }
 
     private String fetchPaymentReference(Long id) {
@@ -291,11 +300,13 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     @Override
     public void deleteAll() {
+        log.debug("Deleting all F2 outgoing bills");
         repository.deleteAllByBillType(BillType.F2_BILL);
     }
 
     @Override
     public void incrementSentCount(String id) {
+        log.debug("Incrementing sent count for F2 outgoing bill {}", id);
         BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.F2_BILL)
                 .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
         billEntity.setSentCount(billEntity.getSentCount() + 1);
@@ -319,6 +330,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                 }
             }
         }
+        log.info("Marked {} F2 outgoing bill(s) as paid from bank statement", updated);
         return updated;
     }
 

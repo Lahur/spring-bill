@@ -119,6 +119,7 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        log.debug("Creating document for ingoing bill {}", id);
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         List<UblAdditionalDocumentReference> attachments = ublInvoice.getAdditionalDocumentReferences();
@@ -144,6 +145,7 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     public Optional<String> generatePdf417Ingoing(String id) {
+        log.debug("Generating PDF417 for ingoing bill {}", id);
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         return generatePdf417(ublInvoice);
@@ -156,6 +158,7 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public BillInfoResponse getBillInfo(String id) {
+        log.debug("Fetching bill info for ingoing bill {}", id);
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         return billInfoMapper.toBillInfoResponse(ublInvoice);
@@ -167,6 +170,7 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     public void markDocumentAsPaid(String id) {
+        log.info("Marking ingoing bill {} as paid", id);
         eposlovanjeClient.changeDocumentStatus(Long.parseLong(id), DocumentChangeStatusRequest.builder()
                 .status(DocumentStatus.PlacenUPotpunosti)
                 .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
@@ -184,6 +188,7 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public void sync() {
+        log.debug("Syncing ingoing bills");
         DocumentListParams.DocumentListParamsBuilder builder =DocumentListParams.builder();
         repository.findFirstByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL).ifPresentOrElse((b) -> {
             builder.issuedFrom(b.getBillDate().plusMinutes(10).format(DateTimeFormatter.ISO_DATE_TIME));
@@ -200,6 +205,7 @@ public class IngoingStrategy implements BillStrategy {
                 .toList();
         logDuplicateSystemIds(billEntities);
         repository.saveAll(billEntities);
+        log.info("Synced {} ingoing bill(s)", billEntities.size());
     }
 
     private String fetchPaymentReference(Long id) {
@@ -222,11 +228,13 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public void deleteAll() {
+        log.debug("Deleting all ingoing bills");
         repository.deleteAllByBillType(BillType.INGOING_BILL);
     }
 
     @Override
     public void incrementSentCount(String id) {
+        log.debug("Incrementing sent count for ingoing bill {}", id);
         BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.INGOING_BILL)
                 .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
         billEntity.setSentCount(billEntity.getSentCount() + 1);
@@ -254,6 +262,7 @@ public class IngoingStrategy implements BillStrategy {
                 }
             }
         }
+        log.info("Marked {} ingoing bill(s) as paid from bank statement", updated);
         return updated;
     }
 
