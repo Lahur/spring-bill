@@ -18,12 +18,22 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
+
+    // hub-bill-app's PDF rendering is CPU-heavy; capping in-flight requests to 2 avoids
+    // throttling it and leaves headroom for the rest of the node (see infra sizing notes).
+    private static final int HUB_RENDER_CONCURRENCY = 2;
 
     private final MailBillClient mailBillClient;
 
@@ -40,15 +50,7 @@ public class DocumentService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        for (SendBillReportItem item : sendBillReportsRequest.reports()) {
-            BillDocument billDocument = billStrategyFactory.createDocument(item.type(), item.id());
-            try {
-                Files.write(pdfsDir.resolve(String.format("%d-%s%s", item.type().getOrder(), billDocument.filename(), ".pdf")),
-                        billDocument.content());
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
+        renderDocuments(sendBillReportsRequest.reports(), pdfsDir);
 
         String fileContent;
         try (var pdfFiles = Files.list(pdfsDir)) {
@@ -78,7 +80,33 @@ public class DocumentService {
         }
     }
 
+    private void renderDocuments(List<SendBillReportItem> items, Path pdfsDir) {
+        List<Callable<Void>> renderTasks = items.stream()
+                .<Callable<Void>>map(item -> () -> {
+                    BillDocument billDocument = billStrategyFactory.createDocument(item.type(), item.id());
+                    Files.write(pdfsDir.resolve(String.format("%d-%s%s", item.type().getOrder(), billDocument.filename(), ".pdf")),
+                            billDocument.content());
+                    return null;
+                })
+                .toList();
 
-
+        ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, Math.min(HUB_RENDER_CONCURRENCY, renderTasks.size())));
+        try {
+            List<Future<Void>> futures = executor.invokeAll(renderTasks);
+            for (Future<Void> future : futures) {
+                future.get();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IOException ioe) throw new UncheckedIOException(ioe);
+            if (cause instanceof RuntimeException re) throw re;
+            throw new RuntimeException(cause);
+        } finally {
+            executor.shutdown();
+        }
+    }
 
 }
