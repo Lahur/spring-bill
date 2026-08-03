@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-vault
+  name: {{ .Values.service.name }}
   labels:
-    app: {{ .Release.Name }}-vault
+    app: {{ .Values.service.name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-vault
+      app: {{ .Values.service.name }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-vault
+        app: {{ .Values.service.name }}
     spec:
       containers:
         - name: vault
-          image: {{ .Values.vault.image }}
+          image: {{ .Values.image }}
           command: ["/bin/sh", "/vault/entrypoint.sh"]
           ports:
             - containerPort: 8200
@@ -42,8 +42,8 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ .Release.Name }}-vault
+            name: {{ .Values.service.name }}
             defaultMode: 0755
         - name: data
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-vault
+            claimName: {{ .Values.service.name }}

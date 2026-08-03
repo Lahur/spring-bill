@@ -3,9 +3,11 @@ spring-bill deployed to namespace {{ .Release.Namespace }}.
 App reachable at: http://<any-k3s-node-ip>:{{ .Values.service.nodePort }}
 
 Before the app pod will come up healthy, seed Vault (kv-v2 at "secret/spring-bill",
-the default path Spring Cloud Vault looks up for spring.application.name=spring-bill):
+the default path Spring Cloud Vault looks up for spring.application.name=spring-bill).
+Vault itself is deployed separately via the helm/vault chart - install that first
+if it isn't already running in this namespace:
 
-  kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ .Release.Name }}-vault -- sh
+  kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ .Values.vault.serviceName }} -- sh
   export VAULT_ADDR=http://127.0.0.1:8200
   export VAULT_TOKEN={{ .Values.vault.token }}
 

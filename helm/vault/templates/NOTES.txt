@@ -1,0 +1,15 @@
+vault deployed to namespace {{ .Release.Namespace }} as "{{ .Values.service.name }}".
+
+Other apps in this namespace can reach it at:
+
+  VAULT_ADDR=http://{{ .Values.service.name }}:8200
+  VAULT_TOKEN={{ .Values.token }}
+
+To seed secrets for an app (kv-v2 is enabled at "secret/"):
+
+  kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ .Values.service.name }} -- sh
+  export VAULT_ADDR=http://127.0.0.1:8200
+  export VAULT_TOKEN={{ .Values.token }}
+
+  vault kv put secret/<spring.application.name> \
+    some.key="value"

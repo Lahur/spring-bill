@@ -28,8 +28,8 @@ postgres:
   storage: 1Gi
 
 vault:
-  image: hashicorp/vault:latest
-  # Fixed dev root token created by entrypoint.sh on first run - must match
-  # what the app is told to use via the VAULT_TOKEN env var.
+  # Deployed separately by the helm/vault chart, shared across apps in the
+  # namespace. serviceName must match that chart's service.name (default
+  # "vault"), and token must match its fixed dev root token.
+  serviceName: vault
   token: root
-  storage: 1Gi

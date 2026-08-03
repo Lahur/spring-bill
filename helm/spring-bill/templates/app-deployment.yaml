@@ -24,7 +24,7 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.app.springProfile | quote }}
             - name: VAULT_ADDR
-              value: "http://{{ .Release.Name }}-vault:8200"
+              value: "http://{{ .Values.vault.serviceName }}:8200"
             - name: VAULT_TOKEN
               value: {{ .Values.vault.token | quote }}
           resources:

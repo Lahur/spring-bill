@@ -1,6 +1,6 @@
 apiVersion: v2
 name: spring-bill
-description: spring-bill app plus its Postgres and Vault dependencies, for the k3s "local" namespace
+description: spring-bill app plus its Postgres dependency, for the k3s "local" namespace. Requires the helm/vault chart deployed separately in the same namespace.
 type: application
 version: 0.1.0
 appVersion: "0.0.1"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: vault
+description: Standalone dev-mode Vault (file storage, single key-shard auto-unseal) shared by apps in the k3s "local" namespace
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
