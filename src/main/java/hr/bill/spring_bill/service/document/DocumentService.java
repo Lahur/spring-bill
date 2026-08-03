@@ -83,9 +83,7 @@ public class DocumentService {
     private void renderDocuments(List<SendBillReportItem> items, Path pdfsDir) {
         List<Callable<Void>> renderTasks = items.stream()
                 .<Callable<Void>>map(item -> () -> {
-                    BillDocument billDocument = billStrategyFactory.createDocument(item.type(), item.id());
-                    Files.write(pdfsDir.resolve(String.format("%d-%s%s", item.type().getOrder(), billDocument.filename(), ".pdf")),
-                            billDocument.content());
+                    renderDocument(item, pdfsDir);
                     return null;
                 })
                 .toList();
@@ -107,6 +105,12 @@ public class DocumentService {
         } finally {
             executor.shutdown();
         }
+    }
+
+    private void renderDocument(SendBillReportItem item, Path pdfsDir) throws IOException {
+        BillDocument billDocument = billStrategyFactory.createDocument(item.type(), item.id());
+        Files.write(pdfsDir.resolve(String.format("%d-%s%s", item.type().getOrder(), billDocument.filename(), ".pdf")),
+                billDocument.content());
     }
 
 }
