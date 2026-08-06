@@ -2,7 +2,9 @@ package hr.bill.spring_bill.mapper;
 
 import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
+import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.xml.camt.model.CamtBankTransactionCodeFamily;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.camt.model.CamtEntry;
 import hr.bill.spring_bill.xml.camt.model.CamtEntryTransaction;
@@ -14,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Mapper(componentModel = "spring", imports = {CreditDebitIndicator.class, LocalDateTime.class, BigDecimal.class})
+@Mapper(componentModel = "spring", imports = {CreditDebitIndicator.class, BankTransactionType.class, BankStatementEntity.class, LocalDateTime.class, BigDecimal.class})
 public interface CamtStatementMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -27,7 +29,7 @@ public interface CamtStatementMapper {
     BankStatementEntity toBankStatementEntity(CamtDocument doc);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(source = "bankStatementId", target = "bankStatementId")
+    @Mapping(target = "bankStatement", expression = "java(BankStatementEntity.builder().id(bankStatementId).build())")
     @Mapping(target = "amount", expression = "java(new BigDecimal(entry.getAmt().getValue().trim()))")
     @Mapping(target = "creditDebitIndicator", expression = "java(CreditDebitIndicator.valueOf(entry.getCdtDbtInd()))")
     @Mapping(target = "senderIban", expression = "java(senderIban(entry, tx, statementIban))")
@@ -35,6 +37,7 @@ public interface CamtStatementMapper {
     @Mapping(source = "tx.rmtInf.strd.cdtrRefInf.ref", target = "reference")
     @Mapping(source = "tx.rmtInf.strd.addtlRmtInf", target = "additionalRemittanceInfo")
     @Mapping(target = "transactionDate", expression = "java(entry.getBookgDt() != null ? LocalDateTime.parse(entry.getBookgDt().getDtTm()) : null)")
+    @Mapping(target = "transactionType", expression = "java(transactionType(entry))")
     BankTransactionEntity toBankTransactionEntity(CamtEntry entry, CamtEntryTransaction tx, UUID bankStatementId, String statementIban);
 
     default List<BankTransactionEntity> toBankTransactionEntities(CamtDocument doc, UUID bankStatementId) {
@@ -62,5 +65,20 @@ public interface CamtStatementMapper {
                     ? tx.getRltdPties().getCdtrAcct().getId().getIban() : null;
         }
         return statementIban;
+    }
+
+    default BankTransactionType transactionType(CamtEntry entry) {
+        CamtBankTransactionCodeFamily fmly = entry.getBkTxCd() != null && entry.getBkTxCd().getDomn() != null
+                ? entry.getBkTxCd().getDomn().getFmly() : null;
+        if (fmly == null) {
+            return BankTransactionType.TRANSACTION;
+        }
+        if ("CCRD".equals(fmly.getCd()) && "POSC".equals(fmly.getSubFmlyCd())) {
+            return BankTransactionType.POS_PAY;
+        }
+        if ("CNTR".equals(fmly.getCd()) && "CWDL".equals(fmly.getSubFmlyCd())) {
+            return BankTransactionType.BANK_WITHDRAWAL;
+        }
+        return BankTransactionType.TRANSACTION;
     }
 }

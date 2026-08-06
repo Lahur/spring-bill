@@ -39,3 +39,8 @@ vault:
   # "vault"), and token must match its fixed dev root token.
   serviceName: vault
   token: root
+
+bill:
+  pos:
+    path: /data/pos
+    storage: 20Gi

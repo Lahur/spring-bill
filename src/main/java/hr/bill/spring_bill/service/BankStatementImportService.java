@@ -7,6 +7,7 @@ import hr.bill.spring_bill.mapper.BankStatementMapper;
 import hr.bill.spring_bill.mapper.CamtStatementMapper;
 import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
+import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.service.document.BillStrategyFactory;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,8 @@ public class BankStatementImportService {
     private final BankTransactionRepository bankTransactionRepository;
 
     private final BillStrategyFactory billStrategyFactory;
+
+    private final PosTransactionService posTransactionService;
 
     private final BankStatementMapper bankStatementMapper;
 
@@ -93,7 +96,9 @@ public class BankStatementImportService {
         BankStatementEntity statement = bankStatementRepository.save(camtStatementMapper.toBankStatementEntity(document));
 
         List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(document, statement.getId());
-        bankTransactionRepository.saveAll(transactions);
+        transactions = bankTransactionRepository.saveAll(transactions);
+        posTransactionService.importPosStatements(transactions.stream().filter(bt ->
+                bt.getTransactionType().equals(BankTransactionType.POS_PAY)).toList());
         log.debug("Saved bank statement {} with {} transaction(s)", statement.getId(), transactions.size());
 
         int matched = billStrategyFactory.markPaidFromBankStatement(document);

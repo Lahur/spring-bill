@@ -27,6 +27,9 @@ spec:
               value: "http://{{ .Values.vault.serviceName }}:8200"
             - name: VAULT_TOKEN
               value: {{ .Values.vault.token | quote }}
+          volumeMounts:
+            - name: pos-storage
+              mountPath: {{ .Values.bill.pos.path }}
           resources:
             {{- toYaml .Values.app.resources | nindent 12 }}
           startupProbe:
@@ -46,3 +49,7 @@ spec:
               port: {{ .Values.app.containerPort }}
             periodSeconds: 20
             failureThreshold: 3
+      volumes:
+        - name: pos-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pos

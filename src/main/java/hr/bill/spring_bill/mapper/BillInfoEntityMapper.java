@@ -33,12 +33,12 @@ import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", imports = {
         DocumentType.class, PaymentMeans.class, VatCategory.class, UnitOfMeasure.class,
-        LocalDate.class, BigDecimal.class, HrPaymentReferenceService.class
+        LocalDate.class, BigDecimal.class, HrPaymentReferenceService.class, BillEntity.class, BillInfoEntity.class
 })
 public interface BillInfoEntityMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(source = "billId", target = "billId")
+    @Mapping(target = "bill", expression = "java(BillEntity.builder().id(billId).build())")
     @Mapping(target = "mainBillDate", expression = "java(LocalDate.parse(inv.getIssueDate()))")
     @Mapping(target = "mainDueDate", expression = "java(LocalDate.parse(inv.getDueDate()))")
     @Mapping(target = "documentType", expression = "java(DocumentType.fromCode(inv.getInvoiceTypeCode()))")
@@ -73,7 +73,7 @@ public interface BillInfoEntityMapper {
     BillInfoEntity toBillInfoEntity(UblInvoice inv, UUID billId);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(source = "billInfoId", target = "billInfoId")
+    @Mapping(target = "billInfo", expression = "java(BillInfoEntity.builder().id(billInfoId).build())")
     @Mapping(target = "itemOrder", expression = "java(lineOrder(line))")
     @Mapping(source = "line.item.name", target = "name")
     @Mapping(source = "line.item.description", target = "description")

@@ -1,13 +1,17 @@
 package hr.bill.spring_bill.model;
 
+import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,8 +36,9 @@ public class BankTransactionEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "bank_statement_id", nullable = false)
-    private UUID bankStatementId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_statement_id", nullable = false)
+    private BankStatementEntity bankStatement;
 
     @Column(name = "amount", precision = 19, scale = 2)
     private BigDecimal amount;
@@ -56,4 +61,8 @@ public class BankTransactionEntity {
 
     @Column(name = "transaction_date")
     private LocalDateTime transactionDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", length = 20)
+    private BankTransactionType transactionType;
 }

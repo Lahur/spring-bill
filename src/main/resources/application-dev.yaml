@@ -21,3 +21,6 @@ bill:
     delete-cron: "0 0 1 1 * *"
     monthly-summary-cron: "0 0 2 1 * *"
     sync-lookback-weeks: 156
+  path:
+    pos: /home/lahur/Documents/pos
+
