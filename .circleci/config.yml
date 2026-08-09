@@ -69,6 +69,9 @@ jobs:
       - run:
           name: Deploy with Helm
           command: |
+            export CLOUDFLEET_ORGANIZATION_ID=$CF_ORG_ID
+            export CLOUDFLEET_ACCESS_TOKEN_ID=$CF_TOKEN_ID
+            export CLOUDFLEET_ACCESS_TOKEN_SECRET=$CF_TOKEN_SECRET
             helm upgrade --install $IMAGE helm/spring-bill \
               --kubeconfig ./kubeconfig.yaml \
               -n $NAMESPACE \
