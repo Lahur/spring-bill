@@ -21,8 +21,7 @@ jobs:
       IMAGE: spring-bill
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 24.0.7
+      - setup_remote_docker
       - run:
           name: Login to CFCR
           command: |
