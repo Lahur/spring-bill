@@ -40,6 +40,8 @@ public class BankStatementImportService {
 
     private final PosTransactionService posTransactionService;
 
+    private final CashWithdrawalBalanceService cashWithdrawalBalanceService;
+
     private final BankStatementMapper bankStatementMapper;
 
     public List<BankStatementResponse> findAll() {
@@ -99,6 +101,8 @@ public class BankStatementImportService {
         transactions = bankTransactionRepository.saveAll(transactions);
         posTransactionService.importPosStatements(transactions.stream().filter(bt ->
                 bt.getTransactionType().equals(BankTransactionType.POS_PAY)).toList());
+        cashWithdrawalBalanceService.importWithdrawalStatements(transactions.stream().filter(bt ->
+                bt.getTransactionType().equals(BankTransactionType.BANK_WITHDRAWAL)).toList());
         log.debug("Saved bank statement {} with {} transaction(s)", statement.getId(), transactions.size());
 
         int matched = billStrategyFactory.markPaidFromBankStatement(document);

@@ -26,21 +26,17 @@ metrics:
   path: /actuator/prometheus
   interval: 30s
 
-postgres:
-  image: postgres:18.4
-  db: spring_bill
-  user: postgres
-  password: postgres
-  storage: 1Gi
-
 vault:
-  # Deployed separately by the helm/vault chart, shared across apps in the
-  # namespace. serviceName must match that chart's service.name (default
-  # "vault"), and token must match its fixed dev root token.
+  # Postgres and Vault are provisioned separately by k8s_pulumi/pulumi_hetzner
+  # in the same namespace ("postgres"/"vault" Services, db "spring_bill").
+  # serviceName/token must match that stack's Vault deployment.
   serviceName: vault
   token: root
 
 bill:
   pos:
     path: /data/pos
+    storage: 20Gi
+  accountsStatement:
+    path: /data/accounts-statement
     storage: 20Gi

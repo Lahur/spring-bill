@@ -1,0 +1,88 @@
+# Builds the root Dockerfile, pushes it to the Cloudfleet Container Registry,
+# and deploys it via the helm/spring-bill chart to the Cloudfleet-managed
+# cluster referenced by k8s_pulumi/pulumi_hetzner (namespace "bill"), which
+# also provisions the Postgres and Vault instances this chart targets.
+#
+# Configure these in CircleCI project settings (Project Settings >
+# Environment Variables):
+#   CF_ORG_ID      - 88a3be32-7c1b-485a-9715-09f7f654160a
+#   CFCR_REGION    - europe
+#   CF_TOKEN_ID    - see `cloudfleet tokens create` (Administrator role)
+#   CF_TOKEN_SECRET
+#   CF_CLUSTER_ID  - a7d70274-a46b-4b08-be96-334cca566c57 (cluster "cluster-1",
+#                    region europe-central-1a)
+version: 2.1
+
+jobs:
+  build-and-push:
+    docker:
+      - image: cimg/base:current
+    environment:
+      IMAGE: spring-bill
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 24.0.7
+      - run:
+          name: Login to CFCR
+          command: |
+            echo $CF_TOKEN_SECRET | docker login $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev \
+              --username $CF_TOKEN_ID --password-stdin
+      - run:
+          name: Build image
+          command: |
+            docker build -f Dockerfile \
+              -t $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE:$CIRCLE_SHA1 .
+      - run:
+          name: Push image
+          command: |
+            docker push $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE:$CIRCLE_SHA1
+            if [ "$CIRCLE_BRANCH" == "main" ]; then
+              docker tag $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE:$CIRCLE_SHA1 \
+                $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE:latest
+              docker push $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE:latest
+            fi
+
+  deploy:
+    docker:
+      - image: cimg/base:current
+    environment:
+      IMAGE: spring-bill
+      NAMESPACE: bill
+    steps:
+      - checkout
+      - run:
+          name: Install Cloudfleet CLI
+          command: |
+            curl -fsSL https://downloads.cloudfleet.ai/cli/latest/cloudfleet-linux-amd64.zip -o cloudfleet.zip
+            unzip cloudfleet.zip
+            sudo mv cloudfleet /usr/local/bin/
+      - run:
+          name: Install Helm
+          command: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - run:
+          name: Fetch kubeconfig for CFKE cluster
+          command: |
+            export CLOUDFLEET_ORGANIZATION_ID=$CF_ORG_ID
+            export CLOUDFLEET_ACCESS_TOKEN_ID=$CF_TOKEN_ID
+            export CLOUDFLEET_ACCESS_TOKEN_SECRET=$CF_TOKEN_SECRET
+            cloudfleet clusters kubeconfig $CF_CLUSTER_ID --kubeconfig ./kubeconfig.yaml
+      - run:
+          name: Deploy with Helm
+          command: |
+            helm upgrade --install $IMAGE helm/spring-bill \
+              --kubeconfig ./kubeconfig.yaml \
+              -n $NAMESPACE \
+              --set image.repository=$CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev/$IMAGE \
+              --set image.tag=$CIRCLE_SHA1
+
+workflows:
+  build-deploy:
+    jobs:
+      - build-and-push
+      - deploy:
+          requires:
+            - build-and-push
+          filters:
+            branches:
+              only: main

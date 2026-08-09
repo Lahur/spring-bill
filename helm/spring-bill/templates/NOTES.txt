@@ -4,17 +4,19 @@ App reachable at: http://<any-k3s-node-ip>:{{ .Values.service.nodePort }}
 
 Before the app pod will come up healthy, seed Vault (kv-v2 at "secret/spring-bill",
 the default path Spring Cloud Vault looks up for spring.application.name=spring-bill).
-Vault itself is deployed separately via the helm/vault chart - install that first
-if it isn't already running in this namespace:
+Postgres and Vault are provisioned separately by k8s_pulumi/pulumi_hetzner in this
+same namespace ("postgres"/"vault" Services) - make sure that stack has been
+applied before installing this chart.
 
+  kubectl -n {{ .Release.Namespace }} get secret postgres -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
   kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ .Values.vault.serviceName }} -- sh
   export VAULT_ADDR=http://127.0.0.1:8200
   export VAULT_TOKEN={{ .Values.vault.token }}
 
   vault kv put secret/spring-bill \
-    spring.datasource.url="jdbc:postgresql://{{ .Release.Name }}-postgres:5432/{{ .Values.postgres.db }}" \
-    spring.datasource.username="{{ .Values.postgres.user }}" \
-    spring.datasource.password="{{ .Values.postgres.password }}" \
+    spring.datasource.url="jdbc:postgresql://postgres:5432/spring_bill" \
+    spring.datasource.username="postgres" \
+    spring.datasource.password="<value from the kubectl command above>" \
     okta.oauth2.issuer="<your-okta-issuer>" \
     okta.oauth2.client-id="<your-okta-client-id>" \
     okta.oauth2.client-secret="<your-okta-client-secret>"

@@ -20,6 +20,7 @@ bill:
     sync-lookback-weeks: 1
   path:
     pos: /data/pos
+    accounts-statement: /data/accounts-statement
 
 logging:
   level:

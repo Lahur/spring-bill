@@ -23,4 +23,5 @@ bill:
     sync-lookback-weeks: 156
   path:
     pos: /home/lahur/Documents/pos
+    accounts-statement: /home/lahur/Documents/accounts-statement
 

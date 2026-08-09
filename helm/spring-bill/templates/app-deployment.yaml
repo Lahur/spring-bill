@@ -30,6 +30,8 @@ spec:
           volumeMounts:
             - name: pos-storage
               mountPath: {{ .Values.bill.pos.path }}
+            - name: accounts-statement-storage
+              mountPath: {{ .Values.bill.accountsStatement.path }}
           resources:
             {{- toYaml .Values.app.resources | nindent 12 }}
           startupProbe:
@@ -53,3 +55,6 @@ spec:
         - name: pos-storage
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-pos
+        - name: accounts-statement-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-accounts-statement
