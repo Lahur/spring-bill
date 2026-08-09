@@ -16,9 +16,13 @@ app:
       memory: 768Mi
 
 service:
-  type: NodePort
+  type: ClusterIP
   port: 8080
-  nodePort: 30081
+
+ingress:
+  # Requires ingress-nginx + cert-manager, provisioned by k8s_pulumi/pulumi_hetzner.
+  enabled: true
+  host: bill.tehnomodus.com
 
 vault:
   # Postgres and Vault are provisioned separately by k8s_pulumi/pulumi_hetzner

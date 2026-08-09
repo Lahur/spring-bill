@@ -1,6 +1,8 @@
 spring-bill deployed to namespace {{ .Release.Namespace }}.
 
-App reachable at: http://<any-k3s-node-ip>:{{ .Values.service.nodePort }}
+{{- if .Values.ingress.enabled }}
+App reachable at: https://{{ .Values.ingress.host }}
+{{- end }}
 
 Before the app pod will come up healthy, seed Vault (kv-v2 at "secret/spring-bill",
 the default path Spring Cloud Vault looks up for spring.application.name=spring-bill).
