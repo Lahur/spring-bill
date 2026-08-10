@@ -38,6 +38,20 @@ services:
       timeout: 5s
       retries: 10
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    container_name: spring-bill-keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8081:8080"
+    volumes:
+      - spring-bill-keycloak-data:/opt/keycloak/data
+
 volumes:
   spring-bill-postgres-data:
   spring-bill-vault-data:
+  spring-bill-keycloak-data:

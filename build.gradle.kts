@@ -30,7 +30,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.postgresql:postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
-	implementation("com.okta.spring:okta-spring-boot-starter:3.1.0")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
 	implementation("org.flywaydb:flyway-database-postgresql")

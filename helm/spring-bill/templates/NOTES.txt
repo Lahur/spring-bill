@@ -19,13 +19,14 @@ applied before installing this chart.
     spring.datasource.url="jdbc:postgresql://postgres:5432/spring_bill" \
     spring.datasource.username="postgres" \
     spring.datasource.password="<value from the kubectl command above>" \
-    okta.oauth2.issuer="<your-okta-issuer>" \
-    okta.oauth2.client-id="<your-okta-client-id>" \
-    okta.oauth2.client-secret="<your-okta-client-secret>"
+    spring.security.oauth2.resourceserver.jwt.issuer-uri="https://<keycloak-host>/realms/<realm-name>"
 
-(Add/replace keys to match whatever spring.*/okta.* properties the app actually
+(Add/replace keys to match whatever spring.* properties the app actually
 needs at runtime - these are not otherwise defined anywhere in the jar for the
-"prod" profile, they only come from Vault.)
+"prod" profile, they only come from Vault. The issuer-uri must point at a
+Keycloak realm exposing /.well-known/openid-configuration; no Keycloak client
+library is needed, Spring's standard oauth2-resource-server support handles
+any OIDC-compliant issuer.)
 
 Also confirm the k3s node(s) can pull from the plain-HTTP registry - if this
 hasn't been done yet, add to /etc/rancher/k3s/registries.yaml on each node and
