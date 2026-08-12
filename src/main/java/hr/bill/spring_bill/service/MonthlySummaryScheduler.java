@@ -11,6 +11,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -63,6 +64,20 @@ public class MonthlySummaryScheduler {
 
         log.info("Backfilling monthly summaries from earliest bill month {} to {}", earliestMonth, currentMonth);
         fillRange(earliestMonth, currentMonth);
+    }
+
+    /**
+     * Wipes and rebuilds the last three completed months of summaries, used after a bank statement
+     * import since newly matched payments can retroactively change those months' totals.
+     */
+    @Transactional
+    public void refreshRecentMonths() {
+        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate from = currentMonth.minusMonths(3);
+
+        log.info("Refreshing monthly summaries from {} to {}", from, currentMonth);
+        monthlySummaryRepository.deleteByMonthGreaterThanEqualAndMonthLessThan(from, currentMonth);
+        fillRange(from, currentMonth);
     }
 
     private void fillRange(LocalDate from, LocalDate currentMonth) {

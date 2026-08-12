@@ -44,6 +44,8 @@ public class BankStatementImportService {
 
     private final BankStatementMapper bankStatementMapper;
 
+    private final MonthlySummaryScheduler monthlySummaryScheduler;
+
     public List<BankStatementResponse> findAll() {
         log.debug("Fetching all bank statements");
         List<BankStatementResponse> result =
@@ -69,6 +71,7 @@ public class BankStatementImportService {
             }
         }
         log.info("Imported {} bank statement(s) from {} file(s)", imported.size(), files.size());
+        monthlySummaryScheduler.refreshRecentMonths();
         return imported;
     }
 
