@@ -67,7 +67,10 @@ public class BankStatementImportService {
             if (filename != null && filename.toLowerCase().endsWith(".zip")) {
                 imported.addAll(importStatementsZip(file));
             } else {
-                imported.add(importStatement(file));
+                BankStatementResponse response = importStatement(file);
+                if (response != null) {
+                    imported.add(response);
+                }
             }
         }
         log.info("Imported {} bank statement(s) from {} file(s)", imported.size(), files.size());
@@ -84,7 +87,10 @@ public class BankStatementImportService {
                 if (!entry.isDirectory() && entry.getName().toLowerCase().endsWith(".xml")) {
                     log.debug("Importing zip entry '{}'", entry.getName());
                     String xml = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
-                    imported.add(importStatementXml(xml));
+                    BankStatementResponse response = importStatementXml(xml);
+                    if (response != null) {
+                        imported.add(response);
+                    }
                 }
                 zis.closeEntry();
             }
@@ -97,6 +103,12 @@ public class BankStatementImportService {
 
     private BankStatementResponse importStatementXml(String xml) {
         CamtDocument document = camtXmlService.parse(xml);
+
+        String statementId = document.getBkToCstmrStmt().getStmt().getId();
+        if (bankStatementRepository.existsByStatementId(statementId)) {
+            log.info("Bank statement '{}' already exists, skipping import", statementId);
+            return null;
+        }
 
         BankStatementEntity statement = bankStatementRepository.save(camtStatementMapper.toBankStatementEntity(document));
 

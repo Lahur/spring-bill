@@ -251,10 +251,12 @@ public class IngoingStrategy implements BillStrategy {
             if (!supplierProperties.iban().equalsIgnoreCase(tx.getSenderIban())) continue;
             for (BillEntity bill : candidates) {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
-                    eposlovanjeClient.changeDocumentStatus(bill.getSystemId(), DocumentChangeStatusRequest.builder()
-                                    .status(DocumentStatus.PlacenUPotpunosti.getValue())
-                                    .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
-                            .build());
+                    if(!bill.getDocumentStatus().equals(BillDocumentStatus.PlacenUPotpunosti)) {
+                        eposlovanjeClient.changeDocumentStatus(bill.getSystemId(), DocumentChangeStatusRequest.builder()
+                                .status(DocumentStatus.PlacenUPotpunosti.getValue())
+                                .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
+                                .build());
+                    }
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
                     repository.save(bill);
                     updated++;

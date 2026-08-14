@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface BankStatementRepository extends JpaRepository<BankStatementEntity, UUID> {
 
     List<BankStatementEntity> findAllByOrderByCreatedAtDesc();
+
+    boolean existsByStatementId(String statementId);
 }
