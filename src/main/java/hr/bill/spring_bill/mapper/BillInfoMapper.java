@@ -201,7 +201,7 @@ public interface BillInfoMapper {
                 new BigDecimal(lmt.getTaxExclusiveAmount().getValue().trim()),
                 new BigDecimal(tt.getTaxAmount().getValue().trim()),
                 new BigDecimal(lmt.getTaxInclusiveAmount().getValue().trim()),
-                new BigDecimal(lmt.getPrepaidAmount().getValue().trim()),
+                lmt.getPrepaidAmount() != null ? new BigDecimal(lmt.getPrepaidAmount().getValue().trim()) : BigDecimal.ZERO,
                 new BigDecimal(lmt.getPayableAmount().getValue().trim())
         );
     }
