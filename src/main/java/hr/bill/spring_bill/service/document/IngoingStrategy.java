@@ -172,7 +172,7 @@ public class IngoingStrategy implements BillStrategy {
     public void markDocumentAsPaid(String id) {
         log.info("Marking ingoing bill {} as paid", id);
         eposlovanjeClient.changeDocumentStatus(Long.parseLong(id), DocumentChangeStatusRequest.builder()
-                .status(DocumentStatus.PlacenUPotpunosti)
+                .status(DocumentStatus.PlacenUPotpunosti.getValue())
                 .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
                 .build());
         BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.INGOING_BILL)
@@ -252,7 +252,7 @@ public class IngoingStrategy implements BillStrategy {
             for (BillEntity bill : candidates) {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     eposlovanjeClient.changeDocumentStatus(bill.getSystemId(), DocumentChangeStatusRequest.builder()
-                                    .status(DocumentStatus.PlacenUPotpunosti)
+                                    .status(DocumentStatus.PlacenUPotpunosti.getValue())
                                     .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
                             .build());
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
