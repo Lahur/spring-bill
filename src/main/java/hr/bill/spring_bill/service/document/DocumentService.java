@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -31,9 +32,10 @@ import java.util.concurrent.Future;
 @RequiredArgsConstructor
 public class DocumentService {
 
-    // hub-bill-app's PDF rendering is CPU-heavy; capping in-flight requests to 2 avoids
+    // hub-bill-app's PDF rendering is CPU-heavy; capping in-flight requests avoids
     // throttling it and leaves headroom for the rest of the node (see infra sizing notes).
-    private static final int HUB_RENDER_CONCURRENCY = 2;
+    @Value("${bill.hub-render-concurrency:1}")
+    private int hubRenderConcurrency;
 
     private final MailBillClient mailBillClient;
 
@@ -88,7 +90,7 @@ public class DocumentService {
                 })
                 .toList();
 
-        ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, Math.min(HUB_RENDER_CONCURRENCY, renderTasks.size())));
+        ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, Math.min(hubRenderConcurrency, renderTasks.size())));
         try {
             List<Future<Void>> futures = executor.invokeAll(renderTasks);
             for (Future<Void> future : futures) {
