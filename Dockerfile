@@ -11,7 +11,7 @@ RUN ./gradlew --no-daemon bootJar && ls -1 build/libs/*.jar
 FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
 
-RUN groupadd -r spring && useradd -r -g spring spring
+RUN groupadd -r -g 1000 spring && useradd -r -u 1000 -g spring spring
 COPY --from=build /workspace/build/libs/*.jar app.jar
 RUN chown spring:spring app.jar
 USER spring
