@@ -3,6 +3,7 @@ package hr.bill.spring_bill.clients.bill_pdf;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillWithDetailsRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.IncomingInvoiceRequest;
+import hr.bill.spring_bill.dto.bill_pdf.request.PosTransactionRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,4 +26,7 @@ public interface BillPdfClient {
 
     @PostMapping("/reports/incoming-invoice")
     byte[] renderIncomingInvoice(@RequestBody IncomingInvoiceRequest req);
+
+    @PostMapping("/reports/pos-transaction")
+    byte[] renderPosTransaction(@RequestBody PosTransactionRequest req);
 }
