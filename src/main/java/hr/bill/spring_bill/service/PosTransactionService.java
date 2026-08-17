@@ -115,7 +115,7 @@ public class PosTransactionService {
 
         String title = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         SendMailRequest sendMailRequest = SendMailRequest.builder()
-                .fileName(title)
+                .fileName("pos-" + title)
                 .subject(title)
                 .recipientEmail(request.email())
                 .fileContent(fileContent)
