@@ -94,7 +94,7 @@ public interface BillInfoMapper {
     @Mapping(target = "fiscalStatus", ignore = true)
     MainDataInfo toMainDataInfo(BillInfoEntity entity);
 
-    @Mapping(source = "party.partyName.name", target = "name")
+    @Mapping(target = "name", expression = "java(legalName(customer.getParty()))")
     @Mapping(source = "party.partyTaxScheme.companyId", target = "oib")
     @Mapping(source = "party.postalAddress.streetName", target = "address")
     @Mapping(source = "party.postalAddress.cityName", target = "city")
@@ -115,7 +115,7 @@ public interface BillInfoMapper {
     @Mapping(source = "buyerPostalCode", target = "postalCode")
     BuyerInfo toBuyerInfo(BillInfoEntity entity);
 
-    @Mapping(source = "party.partyName.name", target = "name")
+    @Mapping(target = "name", expression = "java(legalName(supplier.getParty()))")
     @Mapping(source = "party.partyTaxScheme.companyId", target = "oib")
     @Mapping(source = "party.postalAddress.streetName", target = "address")
     @Mapping(source = "party.postalAddress.cityName", target = "city")
@@ -214,6 +214,15 @@ public interface BillInfoMapper {
     PriceInfo toPriceInfo(ReceiptDto r);
 
     PriceInfo toPriceInfo(BillInfoEntity entity);
+
+    default String legalName(UblParty p) {
+        if (p == null) return "";
+        if (p.getPartyName() != null && p.getPartyName().getName() != null && !p.getPartyName().getName().isBlank()) {
+            return p.getPartyName().getName();
+        }
+        return p.getPartyLegalEntity() != null && p.getPartyLegalEntity().getRegistrationName() != null
+                ? p.getPartyLegalEntity().getRegistrationName() : "";
+    }
 
     default BigDecimal itemTotalAmount(UblInvoiceLine line) {
         BigDecimal base = new BigDecimal(line.getLineExtensionAmount().getValue().trim());
