@@ -152,7 +152,7 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     private Optional<String> generatePdf417(UblInvoice ublInvoice) {
-        ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(supplierProperties, ublInvoice));
+        ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toIngoingPaymentInfo(supplierProperties, ublInvoice));
         return Optional.ofNullable(apiResponse.message());
     }
 

@@ -28,6 +28,22 @@ public interface PaymentInfoMapper {
     @Mapping(target = "description", expression = "java(\"račun \" + ublInvoice.getId())")
     PaymentInfo toPaymentInfo(SupplierProperties supplier, UblInvoice ublInvoice);
 
+    @Mapping(target = "payeeName", source = "ublInvoice.accountingSupplierParty.party.partyName.name")
+    @Mapping(target = "payeeAddress", source = "ublInvoice.accountingSupplierParty.party.postalAddress.streetName")
+    @Mapping(target = "payeeCity", source = "ublInvoice.accountingSupplierParty.party.postalAddress.cityName")
+    @Mapping(target = "payeeZip", source = "ublInvoice.accountingSupplierParty.party.postalAddress.postalZone")
+    @Mapping(target = "payeeIBAN", source = "ublInvoice.paymentMeans.payeeFinancialAccount.id")
+    @Mapping(target = "payerName", source = "supplier.name")
+    @Mapping(target = "payerAddress", source = "supplier.street")
+    @Mapping(target = "payerCity", source = "supplier.city")
+    @Mapping(target = "payerZip", source = "supplier.postalZone")
+    @Mapping(target = "currency", source = "ublInvoice.documentCurrencyCode")
+    @Mapping(target = "amount", expression = "java(Math.abs(new java.math.BigDecimal(ublInvoice.getLegalMonetaryTotal().getTaxInclusiveAmount().getValue()).doubleValue()))")
+    @Mapping(target = "model", expression = "java(HrPaymentReferenceService.extractHrModel(ublInvoice.getPaymentMeans().getPaymentId()))")
+    @Mapping(target = "referenceNumber", expression = "java(HrPaymentReferenceService.trimHrPrefix(ublInvoice.getPaymentMeans().getPaymentId()))")
+    @Mapping(target = "description", expression = "java(\"račun \" + ublInvoice.getId())")
+    PaymentInfo toIngoingPaymentInfo(SupplierProperties supplier, UblInvoice ublInvoice);
+
     @Mapping(target = "payeeName", source = "supplier.name")
     @Mapping(target = "payeeAddress", source = "supplier.street")
     @Mapping(target = "payeeCity", source = "supplier.city")
