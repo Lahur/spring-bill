@@ -44,6 +44,8 @@ public class PosTransactionService {
 
     private final MailBillClient mailBillClient;
 
+    private final RecipientService recipientService;
+
     @Value("${bill.path.pos}")
     private String posPath;
 
@@ -121,6 +123,7 @@ public class PosTransactionService {
                 .fileContent(fileContent)
                 .build();
         mailBillClient.sendMail(sendMailRequest);
+        recipientService.save(request.email());
         log.info("Sent merged POS transaction report mail to {}", request.email());
     }
 

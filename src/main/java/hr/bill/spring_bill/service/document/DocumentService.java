@@ -4,6 +4,7 @@ import hr.bill.spring_bill.clients.mail_bill.MailBillClient;
 import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
 import hr.bill.spring_bill.dto.web.SendBillReportItem;
 import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
+import hr.bill.spring_bill.service.RecipientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.io.IOUtils;
@@ -38,6 +39,8 @@ public class DocumentService {
     private int hubRenderConcurrency;
 
     private final MailBillClient mailBillClient;
+
+    private final RecipientService recipientService;
 
     private final BillStrategyFactory billStrategyFactory;
 
@@ -75,6 +78,7 @@ public class DocumentService {
                 .fileContent(fileContent)
                 .build();
         mailBillClient.sendMail(sendMailRequest);
+        recipientService.save(sendBillReportsRequest.email());
         log.info("Sent merged document mail to {}", sendBillReportsRequest.email());
 
         for (SendBillReportItem item : sendBillReportsRequest.reports()) {
