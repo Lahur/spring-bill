@@ -46,6 +46,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -123,11 +124,18 @@ public class IngoingStrategy implements BillStrategy {
         DocumentGetResponse documentResponse = eposlovanjeClient.getDocument(Long.parseLong(id));
         UblInvoice ublInvoice = ublXmlService.parse(documentResponse.document());
         List<UblAdditionalDocumentReference> attachments = ublInvoice.getAdditionalDocumentReferences();
-        if (attachments != null && !attachments.isEmpty()) {
-            String embeddedContent = attachments.getFirst().getAttachment().getEmbeddedDocumentBinaryObject().getValue();
-            if (embeddedContent != null && !embeddedContent.isBlank()) {
+        if (attachments != null) {
+            Optional<String> embeddedContent = attachments.stream()
+                    .map(UblAdditionalDocumentReference::getAttachment)
+                    .filter(Objects::nonNull)
+                    .map(UblAdditionalDocumentReference.Attachment::getEmbeddedDocumentBinaryObject)
+                    .filter(Objects::nonNull)
+                    .map(UblAdditionalDocumentReference.Attachment.EmbeddedDocumentBinaryObject::getValue)
+                    .filter(value -> value != null && !value.isBlank())
+                    .findFirst();
+            if (embeddedContent.isPresent()) {
                 return BillDocument.builder()
-                        .content(Base64.getDecoder().decode(embeddedContent.trim()))
+                        .content(Base64.getDecoder().decode(embeddedContent.get().trim()))
                         .filename(ublInvoice.getId().replace("/", "-").replace("\\", "-"))
                         .build();
             }
