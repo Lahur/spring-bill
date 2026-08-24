@@ -24,6 +24,9 @@ ingress:
   # Requires ingress-nginx + cert-manager, provisioned by k8s_pulumi/pulumi_hetzner.
   enabled: true
   host: bill.tehnomodus.com
+  # ingress-nginx defaults to 1m, which rejects the scanned bill/receipt PDFs the
+  # mobile app uploads; keep this >= spring.servlet.multipart.max-*-size below.
+  maxBodySize: 10m
 
 vault:
   # Postgres and Vault are provisioned separately by k8s_pulumi/pulumi_hetzner
