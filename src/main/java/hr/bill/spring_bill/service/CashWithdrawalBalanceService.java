@@ -10,6 +10,7 @@ import hr.bill.spring_bill.mapper.CashWithdrawalBalanceMapper;
 import hr.bill.spring_bill.model.AccountsStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.CashWithdrawalBalanceEntity;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CashWithdrawalBalanceService {
 
     private final CashWithdrawalBalanceRepository cashWithdrawalBalanceRepository;
@@ -71,6 +73,10 @@ public class CashWithdrawalBalanceService {
         AccountsStatementEntity entity = accountsStatementMapper.toAccountsStatementEntity(request, billPath);
         entity.setCashWithdrawalBalances(usedCashWithdrawalBalances);
         AccountsStatementEntity saved = accountsStatementRepository.save(entity);
+
+        usedCashWithdrawalBalances.forEach(balance -> balance.getAccountsStatements().add(saved));
+        cashWithdrawalBalanceRepository.saveAll(usedCashWithdrawalBalances);
+
         log.info("Created accounts statement {}", saved.getId());
         return cashWithdrawalBalanceMapper.toCashWithdrawalBalanceResponseList(List.copyOf(usedCashWithdrawalBalances));
     }

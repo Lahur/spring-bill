@@ -1,11 +1,14 @@
 package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.dao.AccountsStatementRepository;
+import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
 import hr.bill.spring_bill.dto.web.cashwithdrawal.AccountsStatementResponse;
 import hr.bill.spring_bill.dto.web.cashwithdrawal.CreateAccountsStatementRequest;
 import hr.bill.spring_bill.exception.NotFoundException;
 import hr.bill.spring_bill.mapper.AccountsStatementMapper;
 import hr.bill.spring_bill.model.AccountsStatementEntity;
+import hr.bill.spring_bill.model.CashWithdrawalBalanceEntity;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,18 +17,25 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AccountsStatementService {
 
     private final AccountsStatementRepository accountsStatementRepository;
+
+    private final CashWithdrawalBalanceRepository cashWithdrawalBalanceRepository;
 
     private final AccountsStatementMapper accountsStatementMapper;
 
@@ -67,6 +77,45 @@ public class AccountsStatementService {
         AccountsStatementEntity saved = accountsStatementRepository.save(entity);
         log.info("Uploaded PDF for accounts statement {}", id);
         return accountsStatementMapper.toAccountsStatementResponse(saved);
+    }
+
+    public List<AccountsStatementResponse> syncWithCashWithdrawals(List<UUID> accountsStatementIds) {
+        log.info("Syncing accounts statements with cash withdrawal balances");
+        List<AccountsStatementEntity> entities = accountsStatementRepository.findAllByIdInOrderByDateDesc(accountsStatementIds);
+        List<CashWithdrawalBalanceEntity> cashWithdrawalBalanceEntities = cashWithdrawalBalanceRepository
+                .findAllByBalanceGreaterThanOrderByBankTransaction_TransactionDateDesc(BigDecimal.ZERO);
+
+        Set<CashWithdrawalBalanceEntity> updatedCashWithdrawalBalances = new LinkedHashSet<>();
+        Iterator<CashWithdrawalBalanceEntity> availableBalances = cashWithdrawalBalanceEntities.iterator();
+        CashWithdrawalBalanceEntity current = availableBalances.hasNext() ? availableBalances.next() : null;
+
+        for (AccountsStatementEntity entity : entities) {
+            BigDecimal remaining = entity.getAmount();
+            Set<CashWithdrawalBalanceEntity> usedCashWithdrawalBalances = new LinkedHashSet<>(entity.getCashWithdrawalBalances());
+            while (remaining.compareTo(BigDecimal.ZERO) > 0 && current != null) {
+                BigDecimal deduction = remaining.compareTo(current.getBalance()) <= 0
+                        ? remaining
+                        : current.getBalance();
+                current.setBalance(current.getBalance().subtract(deduction));
+                remaining = remaining.subtract(deduction);
+                usedCashWithdrawalBalances.add(current);
+                updatedCashWithdrawalBalances.add(current);
+                if (current.getBalance().compareTo(BigDecimal.ZERO) <= 0) {
+                    current = availableBalances.hasNext() ? availableBalances.next() : null;
+                }
+            }
+            if (remaining.compareTo(BigDecimal.ZERO) > 0 && current == null) {
+                throw new IllegalArgumentException(
+                        "Ran out of cash withdrawal balance while syncing accounts statement " + entity.getId());
+            }
+            entity.setCashWithdrawalBalances(usedCashWithdrawalBalances);
+            usedCashWithdrawalBalances.forEach(balance -> balance.getAccountsStatements().add(entity));
+        }
+
+        cashWithdrawalBalanceRepository.saveAll(updatedCashWithdrawalBalances);
+        List<AccountsStatementEntity> saved = accountsStatementRepository.saveAll(entities);
+        log.info("Synced {} accounts statements with cash withdrawal balances", saved.size());
+        return accountsStatementMapper.toAccountsStatementResponseList(saved);
     }
 
     private Path storeFile(MultipartFile file) {
