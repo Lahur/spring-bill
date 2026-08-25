@@ -83,7 +83,7 @@ public class AccountsStatementService {
         log.info("Syncing accounts statements with cash withdrawal balances");
         List<AccountsStatementEntity> entities = accountsStatementRepository.findAllByIdInOrderByDateDesc(accountsStatementIds);
         List<CashWithdrawalBalanceEntity> cashWithdrawalBalanceEntities = cashWithdrawalBalanceRepository
-                .findAllByBalanceGreaterThanOrderByBankTransaction_TransactionDateDesc(BigDecimal.ZERO);
+                .findAllByBalanceGreaterThanOrderByBankTransaction_TransactionDate(BigDecimal.ZERO);
 
         Set<CashWithdrawalBalanceEntity> updatedCashWithdrawalBalances = new LinkedHashSet<>();
         Iterator<CashWithdrawalBalanceEntity> availableBalances = cashWithdrawalBalanceEntities.iterator();
