@@ -8,6 +8,7 @@ import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.ApiResponse;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.PaymentMethod;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptType;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.UnitOfMeasure;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.CreateReceiptDto;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.CreateReceiptItemDto;
@@ -149,6 +150,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                     .issueDateTime(LocalDateTime.of(f1BillRequest.getBillDate(), f1BillRequest.getBillTime())
                             .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .paymentMethod(PaymentMethod.BankTransfer)
+                    .receiptType(ReceiptType.Standard)
                     .operatorOib(supplierProperties.contactOib())
                     .notes(f1BillRequest.getNote() == null || f1BillRequest.getNote().isBlank() ? null : f1BillRequest.getNote())
                     .paymentDueDate(f1BillRequest.getDueDate().toString())
