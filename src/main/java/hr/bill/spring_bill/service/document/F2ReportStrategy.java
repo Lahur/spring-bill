@@ -175,7 +175,7 @@ public class F2ReportStrategy implements BillStrategy {
             String xmlRequest = ublXmlService.generateXml(invoice);
             EReportingReportDocumentRequest reportDocumentRequest = EReportingReportDocumentRequest.builder()
                     .document(xmlRequest)
-                    .documentType("IR")
+                    .type("IR")
                     .build();
             eposlovanjeClient.reportDocument(reportDocumentRequest);
             BillEntity billEntity = billEntityMapper.toBillEntity(
@@ -214,7 +214,7 @@ public class F2ReportStrategy implements BillStrategy {
         String xml = ublXmlService.generateXml(toCancellationUblInvoice(orig, parsedNewId));
         EReportingReportDocumentRequest reportDocumentRequest = EReportingReportDocumentRequest.builder()
                 .document(xml)
-                .documentType("IR")
+                .type("IR")
                 .build();
         eposlovanjeClient.reportDocument(reportDocumentRequest);
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()

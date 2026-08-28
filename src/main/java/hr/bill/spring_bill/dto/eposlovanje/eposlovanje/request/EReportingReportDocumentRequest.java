@@ -5,5 +5,5 @@ import lombok.Builder;
 @Builder
 public record EReportingReportDocumentRequest(
         String document,
-        String documentType
+        String type
 ) {}
