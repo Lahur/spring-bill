@@ -167,6 +167,8 @@ public class F1OutgoingStrategy implements BillStrategy {
                             .unitPrice(f1BillRequest.getBaseAmount().doubleValue())
                             .taxRate(f1BillRequest.getTaxRate())
                             .unitOfMeasure(UnitOfMeasure.Kom)
+                            .discountAmount(0.0)
+                            .discountPercent(0.0)
                             .build()))
                     .autoFiscalize(true)
                     .build());
