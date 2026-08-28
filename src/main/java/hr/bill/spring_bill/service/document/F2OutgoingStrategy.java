@@ -85,6 +85,9 @@ public class F2OutgoingStrategy implements BillStrategy {
     @Value("${bill.schedule.sync-lookback-weeks}")
     private long syncLookbackWeeks;
 
+    @Value("${bill.eposlovanje.post-send-delay-ms:2000}")
+    private long postSendDelayMs;
+
     private final PaymentInfoMapper paymentInfoMapper;
 
     private final UblInvoiceMapper ublInvoiceMapper;
@@ -172,6 +175,12 @@ public class F2OutgoingStrategy implements BillStrategy {
                 }
                 catch (FeignException.FeignClientException e) {
                     throw e;
+                }
+                try {
+                    Thread.sleep(postSendDelayMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
                 }
                 List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
                         .issuedFrom(LocalDate.now().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
