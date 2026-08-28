@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,7 +40,7 @@ public class IngoingBillController {
             @ApiResponse(responseCode = "200", description = "Bills retrieved successfully"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public List<BillResponse> getBillsFilter(@RequestBody BillSearchParams params) {
+    public List<BillResponse> getBillsFilter(@RequestBody @Validated BillSearchParams params) {
         return ingoingStrategy.getBillsFilter(params);
     }
 

@@ -45,7 +45,7 @@ public class F2BillController {
             @ApiResponse(responseCode = "200", description = "Bills retrieved successfully"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public List<BillResponse> getBillsFilter(@RequestBody BillSearchParams params) {
+    public List<BillResponse> getBillsFilter(@RequestBody @Validated BillSearchParams params) {
         return f2OutgoingStrategy.getBillsFilter(params);
     }
 
