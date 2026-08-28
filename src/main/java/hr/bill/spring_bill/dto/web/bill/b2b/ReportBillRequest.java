@@ -29,9 +29,8 @@ public class ReportBillRequest extends BaseBillRequest {
     @NotNull(message = "Vat category can't be null")
     private VatCategory vatCategory;
 
-    @Schema(description = "Payment reference", example = "indent P-1-100")
-    @NotNull(message = "Reference can't be null")
-    private String reference;
+    @Schema(description = "Order number this bill refers to", example = "indent P-1-100")
+    private String orderNumber;
 
     @Schema(description = "Buyers name", example = "PEVEX d.d.")
     @NotNull(message = "Buyer name can't be null")
@@ -48,4 +47,10 @@ public class ReportBillRequest extends BaseBillRequest {
     @Schema(description = "Buyers residental city postal code", example = "10360")
     @NotNull(message = "Buyer postal zone can't be null")
     private String buyerPostalZone;
+
+    @Schema(hidden = true)
+    private byte[] orderDocumentBytes;
+
+    @Schema(hidden = true)
+    private String orderDocumentFilename;
 }

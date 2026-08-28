@@ -11,9 +11,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,14 +39,28 @@ public class F2ReportBillController {
         return f2ReportStrategy.getBills();
     }
 
-    @PostMapping
-    @Operation(summary = "Create a new bill")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create a new bill", description = "Accepts the bill request alongside an optional order document to attach to the invoice")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bill created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public BillResponse createBill(@RequestBody @Validated ReportBillRequest request) {
+    public BillResponse createBill(
+            @RequestPart("request") @Validated ReportBillRequest request,
+            @Parameter(description = "Order document to attach alongside the generated invoice PDF")
+            @RequestPart(value = "orderDocument", required = false) MultipartFile orderDocument) {
+        if (orderDocument != null && !orderDocument.isEmpty()) {
+            if (request.getOrderNumber() == null || request.getOrderNumber().isBlank()) {
+                throw new IllegalArgumentException("orderNumber is required when orderDocument is provided");
+            }
+            try {
+                request.setOrderDocumentBytes(orderDocument.getBytes());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            request.setOrderDocumentFilename(request.getOrderNumber() + ".pdf");
+        }
         return f2ReportStrategy.createBill(request);
     }
 

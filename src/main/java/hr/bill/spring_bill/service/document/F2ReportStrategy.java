@@ -54,6 +54,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -241,7 +242,7 @@ public class F2ReportStrategy implements BillStrategy {
                     .description(reportBillRequest.getBillItemDescription())
                     .pdvType(reportBillRequest.getVatCategory())
                     .profile(reportBillRequest.getProfile())
-                    .orderNumber(reportBillRequest.getReference())
+                    .orderNumber(reportBillRequest.getOrderNumber())
                     .note(reportBillRequest.getNote())
                     .buyerOib(reportBillRequest.getBuyerOib())
                     .buyerName(reportBillRequest.getBuyerName())
@@ -377,8 +378,8 @@ public class F2ReportStrategy implements BillStrategy {
                         .startDate(request.getBillDate().withDayOfMonth(1).format(dateFormat))
                         .endDate(request.getBillDate().format(dateFormat))
                         .build())
-                .orderReference(nullIfBlank(request.getReference()) != null
-                        ? UblOrderReference.builder().id(request.getReference()).build()
+                .orderReference(nullIfBlank(request.getOrderNumber()) != null
+                        ? UblOrderReference.builder().id(request.getOrderNumber()).build()
                         : null)
                 .accountingSupplierParty(buildSupplierParty())
                 .accountingCustomerParty(UblAccountingCustomerParty.builder()
@@ -480,12 +481,7 @@ public class F2ReportStrategy implements BillStrategy {
                                     .build();
                         })
                         .toList())
-                .additionalDocumentReferences(List.of(UblAdditionalDocumentReference.builder()
-                        .id(String.valueOf(1))
-                        .attachment(UblAdditionalDocumentReference.Attachment.builder()
-                                .embeddedDocumentBinaryObject(createXmlReport(request, computed))
-                                .build())
-                        .build()))
+                .additionalDocumentReferences(buildAdditionalDocumentReferences(request, computed))
                 .build();
     }
 
@@ -672,6 +668,29 @@ public class F2ReportStrategy implements BillStrategy {
                 .filename(filename)
                 .value(Base64.getEncoder().encodeToString(pdfBytes))
                 .build();
+    }
+
+    private List<UblAdditionalDocumentReference> buildAdditionalDocumentReferences(ReportBillRequest request, ComputedAmounts computed) {
+        List<UblAdditionalDocumentReference> references = new ArrayList<>();
+        references.add(UblAdditionalDocumentReference.builder()
+                .id("1")
+                .attachment(UblAdditionalDocumentReference.Attachment.builder()
+                        .embeddedDocumentBinaryObject(createXmlReport(request, computed))
+                        .build())
+                .build());
+        if (request.getOrderDocumentBytes() != null) {
+            references.add(UblAdditionalDocumentReference.builder()
+                    .id("2")
+                    .attachment(UblAdditionalDocumentReference.Attachment.builder()
+                            .embeddedDocumentBinaryObject(UblAdditionalDocumentReference.Attachment.EmbeddedDocumentBinaryObject.builder()
+                                    .mimeCode("application/pdf")
+                                    .filename(request.getOrderDocumentFilename())
+                                    .value(Base64.getEncoder().encodeToString(request.getOrderDocumentBytes()))
+                                    .build())
+                            .build())
+                    .build());
+        }
+        return references;
     }
 
     private static String nullIfBlank(String s) {
