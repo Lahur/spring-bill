@@ -19,9 +19,11 @@ public interface AccountsStatementMapper {
 
     @Mapping(source = "request.cashWithdrawalIds", target = "cashWithdrawalBalances")
     @Mapping(source = "billPath", target = "billPath")
+    @Mapping(target = "sentCount", ignore = true)
     AccountsStatementEntity toAccountsStatementEntity(AccountsStatementRequest request, String billPath);
 
     @Mapping(source = "billPath", target = "billPath")
+    @Mapping(target = "sentCount", ignore = true)
     AccountsStatementEntity toAccountsStatementEntity(CreateAccountsStatementRequest request, String billPath);
 
     @Mapping(source = "cashWithdrawalBalances", target = "cashWithdrawalBalanceIds")

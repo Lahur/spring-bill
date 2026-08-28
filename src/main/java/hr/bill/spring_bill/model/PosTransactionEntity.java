@@ -21,6 +21,10 @@ public class PosTransactionEntity {
     @Column(name = "bill_path")
     private String billPath;
 
+    @Builder.Default
+    @Column(name = "sent_count", nullable = false)
+    private int sentCount = 0;
+
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "bank_transaction_id", nullable = false)
     private BankTransactionEntity bankTransaction;

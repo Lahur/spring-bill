@@ -1,10 +1,12 @@
-package hr.bill.spring_bill.service.document;
+package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.clients.mail_bill.MailBillClient;
 import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
 import hr.bill.spring_bill.dto.web.SendBillReportItem;
 import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
-import hr.bill.spring_bill.service.RecipientService;
+import hr.bill.spring_bill.service.document.BillDocument;
+import hr.bill.spring_bill.service.document.BillStrategyFactory;
+import hr.bill.spring_bill.service.document.DocumentStrategyFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.io.IOUtils;
@@ -42,7 +44,7 @@ public class DocumentService {
 
     private final RecipientService recipientService;
 
-    private final BillStrategyFactory billStrategyFactory;
+    private final DocumentStrategyFactory documentStrategyFactory;
 
     public void generateAndSendDocuments(SendBillReportsRequest sendBillReportsRequest) {
         log.info("Generating and sending {} document(s) to {}",
@@ -82,7 +84,7 @@ public class DocumentService {
         log.info("Sent merged document mail to {}", sendBillReportsRequest.email());
 
         for (SendBillReportItem item : sendBillReportsRequest.reports()) {
-            billStrategyFactory.incrementSentCount(item.type(), item.id());
+            documentStrategyFactory.incrementSentCount(item.type(), item.id());
         }
     }
 
@@ -114,7 +116,7 @@ public class DocumentService {
     }
 
     private void renderDocument(SendBillReportItem item, Path pdfsDir) throws IOException {
-        BillDocument billDocument = billStrategyFactory.createDocument(item.type(), item.id());
+        BillDocument billDocument = documentStrategyFactory.createDocument(item.type(), item.id());
         Files.write(pdfsDir.resolve(String.format("%d-%s%s", item.type().getOrder(), billDocument.filename(), ".pdf")),
                 billDocument.content());
     }

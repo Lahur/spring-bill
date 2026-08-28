@@ -27,6 +27,9 @@ public record AccountsStatementResponse(
         @Schema(description = "Whether a bill PDF has been uploaded for this accounts statement")
         boolean hasBill,
 
+        @Schema(description = "Number of times the report was sent", example = "2")
+        int sentCount,
+
         @Schema(description = "Internal IDs of the linked cash withdrawal balances")
         Set<UUID> cashWithdrawalBalanceIds
 ) {

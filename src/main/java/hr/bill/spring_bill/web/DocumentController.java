@@ -1,7 +1,7 @@
 package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
-import hr.bill.spring_bill.service.document.DocumentService;
+import hr.bill.spring_bill.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

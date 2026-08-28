@@ -33,6 +33,9 @@ public record CashWithdrawalBalanceResponse(
         @Schema(description = "Date and time of the transaction")
         LocalDateTime transactionDate,
 
+        @Schema(description = "Number of times the report was sent", example = "2")
+        int sentCount,
+
         @Schema(description = "Internal IDs of the linked accounts statements")
         Set<UUID> accountsStatementIds
 ) {

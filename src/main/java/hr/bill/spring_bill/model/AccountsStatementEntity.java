@@ -35,6 +35,10 @@ public class AccountsStatementEntity {
     private String billPath;
 
     @Builder.Default
+    @Column(name = "sent_count", nullable = false)
+    private int sentCount = 0;
+
+    @Builder.Default
     @ManyToMany(mappedBy = "accountsStatements", fetch = FetchType.LAZY)
     private Set<CashWithdrawalBalanceEntity> cashWithdrawalBalances = new HashSet<>();
 

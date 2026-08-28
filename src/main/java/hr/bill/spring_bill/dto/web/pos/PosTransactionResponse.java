@@ -36,6 +36,9 @@ public record PosTransactionResponse(
         LocalDateTime transactionDate,
 
         @Schema(description = "Whether a bill PDF has been uploaded for this POS transaction")
-        boolean hasBill
+        boolean hasBill,
+
+        @Schema(description = "Number of times the report was sent", example = "2")
+        int sentCount
 ) {
 }

@@ -56,17 +56,4 @@ public class PosTransactionController {
             @RequestParam("file") MultipartFile file) {
         return posTransactionService.upload(id, file);
     }
-
-    @PostMapping("/generate-and-send")
-    @Operation(summary = "Generate POS transaction reports and send them by email")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Reports generated and sent successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid request body"),
-            @ApiResponse(responseCode = "404", description = "POS transaction not found"),
-            @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    public ResponseEntity<Void> generateAndSend(@RequestBody @Validated PosTransactionGenerateAndSendRequest request) {
-        posTransactionService.generateAndSendReports(request);
-        return ResponseEntity.ok().build();
-    }
 }

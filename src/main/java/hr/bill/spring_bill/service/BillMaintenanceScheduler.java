@@ -4,6 +4,7 @@ import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.service.document.BillStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,10 +19,17 @@ public class BillMaintenanceScheduler {
 
     private final List<BillStrategy> strategies;
 
+    @Value("${bill.schedule.delete-on-startup}")
+    private boolean deleteOnStartup;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         log.info("Application ready, running startup bill maintenance");
-        deleteAllExceptReports();
+        if (deleteOnStartup) {
+            deleteAllExceptReports();
+        } else {
+            log.info("Skipping startup deletion, bill.schedule.delete-on-startup is false");
+        }
         syncAll();
     }
 

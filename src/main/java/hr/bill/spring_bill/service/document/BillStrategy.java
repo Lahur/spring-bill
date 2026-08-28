@@ -11,17 +11,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface BillStrategy {
-
-    BillReportType getType();
+public interface BillStrategy extends DocumentStrategy {
 
     List<BillResponse> getBills();
 
     PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart);
 
     Optional<LocalDate> findEarliestBillMonth();
-
-    BillDocument createDocument(String id);
 
     BillResponse createBill(BaseBillRequest request);
 
@@ -34,8 +30,6 @@ public interface BillStrategy {
     void sync();
 
     void deleteAll();
-
-    void incrementSentCount(String id);
 
     int markPaidFromBankStatement(CamtDocument statement);
 }
