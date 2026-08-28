@@ -29,6 +29,7 @@ import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.service.UblXmlService;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
@@ -201,7 +202,7 @@ public class IngoingStrategy implements BillStrategy {
         repository.findFirstByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL).ifPresentOrElse((b) -> {
             builder.issuedFrom(b.getBillDate().plusMinutes(10).format(DateTimeFormatter.ISO_DATE_TIME));
         }, () -> {
-            builder.issuedFrom(LocalDate.now().withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+            builder.issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
         });
         List<DocumentStatusResponse> documentResponses = eposlovanjeClient.getIncomingDocuments(builder.build());
         List<BillEntity> billEntities = documentResponses.stream()

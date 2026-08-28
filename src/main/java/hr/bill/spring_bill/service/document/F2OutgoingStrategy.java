@@ -39,6 +39,7 @@ import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.BusinessEntityService;
+import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import hr.bill.spring_bill.service.UblXmlService;
@@ -183,8 +184,8 @@ public class F2OutgoingStrategy implements BillStrategy {
                     throw new RuntimeException(e);
                 }
                 List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                        .issuedFrom(LocalDate.now().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .issuedTo(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .issuedTo(LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ISO_DATE_TIME))
                         .build());
                 DocumentStatusResponse lastBill = bills.stream()
                         .filter(b -> b.documentId().equals(String.format("%d/1/1", f2BillRequest.getBillId())))
@@ -221,8 +222,8 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .build();
         eposlovanjeClient.sendDocument(documentSendRequest);
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                .issuedFrom(LocalDate.now().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
-                .issuedTo(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedTo(LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ISO_DATE_TIME))
                 .build());
         DocumentStatusResponse lastBill = bills.stream()
                 .filter(b -> b.documentId().equals(String.format("%d/1/1", parsedNewId)))
@@ -274,7 +275,7 @@ public class F2OutgoingStrategy implements BillStrategy {
         repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F2_BILL).ifPresentOrElse((b) -> {
             builder.issuedFrom(b.getBillDate().plusMinutes(10).format(DateTimeFormatter.ISO_DATE_TIME));
         }, () -> {
-            builder.issuedFrom(LocalDate.now().withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+            builder.issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
         });
         List<DocumentStatusResponse> documentResponses = eposlovanjeClient.getOutgoingDocuments(builder.build());
         List<BillEntity> billEntities = documentResponses.stream()

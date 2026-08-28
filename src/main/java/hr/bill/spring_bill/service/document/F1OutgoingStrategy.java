@@ -34,6 +34,7 @@ import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
@@ -232,7 +233,7 @@ public class F1OutgoingStrategy implements BillStrategy {
         log.debug("Syncing F1 bills");
         LocalDateTime threshold = repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F1_BILL)
                 .map(b -> b.getBillDate().plusMinutes(10))
-                .orElseGet(() -> LocalDate.now().withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay());
+                .orElseGet(() -> LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay());
         GetReceiptsQuery query = GetReceiptsQuery.builder()
                 .dateFrom(threshold.format(DateTimeFormatter.ISO_DATE_TIME))
                 .build();

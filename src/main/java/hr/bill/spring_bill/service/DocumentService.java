@@ -72,7 +72,7 @@ public class DocumentService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        String title = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String title = LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         SendMailRequest sendMailRequest = SendMailRequest.builder()
                 .fileName(title)
                 .subject(title)

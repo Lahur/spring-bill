@@ -33,7 +33,7 @@ public class DashboardService {
 
     public DashboardSummaryResponse getSummary() {
         log.debug("Building dashboard summary for current month");
-        LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime from = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).atStartOfDay();
         LocalDateTime to = from.plusMonths(1);
 
         BigDecimal salesPaidTotal = billRepository.sumPaidAmountByBillTypeNotAndBillDateBetween(

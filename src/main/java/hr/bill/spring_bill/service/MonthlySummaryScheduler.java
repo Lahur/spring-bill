@@ -34,7 +34,7 @@ public class MonthlySummaryScheduler {
 
     @Scheduled(cron = "${bill.schedule.monthly-summary-cron}")
     public void fillMissingMonths() {
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentMonth = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
 
         LocalDate month = monthlySummaryRepository.findFirstByOrderByMonthDesc()
                 .map(entity -> entity.getMonth().plusMonths(1))
@@ -55,7 +55,7 @@ public class MonthlySummaryScheduler {
             return;
         }
 
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentMonth = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
         LocalDate earliestMonth = strategies.stream()
                 .map(BillStrategy::findEarliestBillMonth)
                 .flatMap(Optional::stream)
@@ -72,7 +72,7 @@ public class MonthlySummaryScheduler {
      */
     @Transactional
     public void refreshRecentMonths() {
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentMonth = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
         LocalDate from = currentMonth.minusMonths(3);
 
         log.info("Refreshing monthly summaries from {} to {}", from, currentMonth);

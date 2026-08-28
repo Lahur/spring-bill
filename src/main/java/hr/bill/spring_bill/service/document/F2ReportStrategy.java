@@ -39,6 +39,7 @@ import hr.bill.spring_bill.model.BillItemEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import hr.bill.spring_bill.service.UblXmlService;
@@ -218,8 +219,8 @@ public class F2ReportStrategy implements BillStrategy {
                 .build();
         eposlovanjeClient.reportDocument(reportDocumentRequest);
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                .issuedFrom(LocalDate.now().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
-                .issuedTo(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedTo(LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ISO_DATE_TIME))
                 .build());
         DocumentStatusResponse lastBill = bills.stream()
                 .filter(b -> b.documentId().equals(String.format("%d/1/1", parsedNewId)))
