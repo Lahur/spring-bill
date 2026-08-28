@@ -25,24 +25,17 @@ import hr.bill.spring_bill.dto.web.BusinessCheckResponse;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.b2b.F2BillRequest;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
-import hr.bill.spring_bill.mapper.BillEntityMapper;
-import hr.bill.spring_bill.mapper.BillInfoMapper;
-import hr.bill.spring_bill.mapper.CamtStatementMapper;
-import hr.bill.spring_bill.mapper.PaymentInfoMapper;
-import hr.bill.spring_bill.mapper.UblInvoiceMapper;
+import hr.bill.spring_bill.mapper.*;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
-import hr.bill.spring_bill.service.BusinessEntityService;
-import hr.bill.spring_bill.service.CroatianTimeZone;
-import hr.bill.spring_bill.service.HrPaymentReferenceService;
-import hr.bill.spring_bill.service.NumberToWordsService;
-import hr.bill.spring_bill.service.UblXmlService;
+import hr.bill.spring_bill.service.*;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.*;
 import lombok.RequiredArgsConstructor;
@@ -56,11 +49,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -112,6 +101,20 @@ public class F2OutgoingStrategy implements BillStrategy {
     public List<BillResponse> getBills() {
         List<BillEntity> bills = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F2_BILL);
         return billEntityMapper.toBillResponseList(bills);
+    }
+
+    @Override
+    public List<BillResponse> getBillsFilter(BillSearchParams params) {
+        DocumentListParams.DocumentListParamsBuilder queryBuilder = DocumentListParams.builder();
+        if (params.dateFrom() != null) {
+            queryBuilder.issuedFrom(params.dateFrom().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        if (params.dateTill() != null) {
+            queryBuilder.issuedTo(params.dateTill().plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        return eposlovanjeClient.getOutgoingDocuments(queryBuilder.build()).stream()
+                .map(dsr -> billEntityMapper.toBillResponse(dsr, BillType.F2_BILL))
+                .toList();
     }
 
     @Override

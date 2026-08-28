@@ -3,19 +3,9 @@ package hr.bill.spring_bill.clients.eposlovanje_util;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.PaymentInfo;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.request.FiscalizeDocumentRequestDTO;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.request.SendSmsMessageDTO;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.ApiResponse;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.BusinessEntity;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.BusinessUnitDTO;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.FiscalizeDocumentResponseDTO;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.Postoffice;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.SendSmsMessageResponseDTO;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.SmsMessageDTO;
+import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.*;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 

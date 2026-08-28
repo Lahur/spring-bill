@@ -1,12 +1,6 @@
 package hr.bill.spring_bill.mapper;
 
-import hr.bill.spring_bill.dto.bill_pdf.common.InvoiceLineDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.MonetaryTotalDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.OutgoingCustomerDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.OutgoingPaymentMeansDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.OutgoingSupplierDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.TaxSubtotalDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.BillDetailsDto;
+import hr.bill.spring_bill.dto.bill_pdf.common.*;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillWithDetailsRequest;
 import hr.bill.spring_bill.dto.eposlovanje.enums.DocumentType;
 import hr.bill.spring_bill.dto.eposlovanje.enums.PaymentMeans;

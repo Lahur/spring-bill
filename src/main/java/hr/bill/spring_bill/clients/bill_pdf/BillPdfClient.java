@@ -1,11 +1,6 @@
 package hr.bill.spring_bill.clients.bill_pdf;
 
-import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
-import hr.bill.spring_bill.dto.bill_pdf.request.BillWithDetailsRequest;
-import hr.bill.spring_bill.dto.bill_pdf.request.DepositRequest;
-import hr.bill.spring_bill.dto.bill_pdf.request.DisbursementRequest;
-import hr.bill.spring_bill.dto.bill_pdf.request.IncomingInvoiceRequest;
-import hr.bill.spring_bill.dto.bill_pdf.request.PosTransactionRequest;
+import hr.bill.spring_bill.dto.bill_pdf.request.*;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

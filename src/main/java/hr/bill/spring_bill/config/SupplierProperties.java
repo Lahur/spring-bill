@@ -1,6 +1,5 @@
 package hr.bill.spring_bill.config;
 
-import hr.bill.spring_bill.validation.ValidOib;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 

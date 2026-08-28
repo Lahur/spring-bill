@@ -7,7 +7,6 @@ import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.request.AmsCheckRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.response.AmsCheckResponse;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.BusinessEntity;
 import hr.bill.spring_bill.dto.web.BusinessCheckResponse;
-import hr.bill.spring_bill.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

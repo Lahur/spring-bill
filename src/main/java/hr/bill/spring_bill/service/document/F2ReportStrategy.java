@@ -24,14 +24,11 @@ import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.b2b.ReportBillRequest;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
-import hr.bill.spring_bill.mapper.BillEntityMapper;
-import hr.bill.spring_bill.mapper.BillInfoEntityMapper;
-import hr.bill.spring_bill.mapper.BillInfoMapper;
-import hr.bill.spring_bill.mapper.CamtStatementMapper;
-import hr.bill.spring_bill.mapper.PaymentInfoMapper;
+import hr.bill.spring_bill.mapper.*;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.BillInfoEntity;
@@ -55,12 +52,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -106,6 +98,16 @@ public class F2ReportStrategy implements BillStrategy {
     @Override
     public List<BillResponse> getBills() {
         List<BillEntity> bills = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F2_REPORT);
+        return billEntityMapper.toBillResponseList(bills);
+    }
+
+    @Override
+    public List<BillResponse> getBillsFilter(BillSearchParams params) {
+        // F2_REPORT has no upstream source - sync() is a no-op for it and it's excluded from the
+        // yearly deleteAllExceptReports() wipe, so the local table is the only place it ever lives.
+        LocalDateTime from = params.dateFrom() == null ? null : params.dateFrom().atStartOfDay();
+        LocalDateTime to = params.dateTill() == null ? null : params.dateTill().plusDays(1).atStartOfDay();
+        List<BillEntity> bills = repository.findAllByBillTypeAndBillDateBetweenOptional(BillType.F2_REPORT, from, to);
         return billEntityMapper.toBillResponseList(bills);
     }
 

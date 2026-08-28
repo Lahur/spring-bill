@@ -1,13 +1,6 @@
 package hr.bill.spring_bill.dto.eposlovanje.f1_web.response;
 
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ConsumptionTaxDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.FiscalStatus;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.OtherTaxDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.PaymentMethod;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptItemDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptType;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.SurchargeDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.TaxBreakdownDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.*;
 
 import java.util.List;
 

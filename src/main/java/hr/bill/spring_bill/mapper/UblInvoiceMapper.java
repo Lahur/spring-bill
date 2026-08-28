@@ -6,7 +6,10 @@ import hr.bill.spring_bill.dto.bill_pdf.request.IncomingInvoiceRequest;
 import hr.bill.spring_bill.dto.eposlovanje.enums.VatCategory;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import hr.bill.spring_bill.xml.ubl.model.*;
-import org.mapstruct.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

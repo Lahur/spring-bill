@@ -81,4 +81,40 @@ public interface BillEntityMapper {
     BillResponse toBillResponse(BillEntity entity);
 
     List<BillResponse> toBillResponseList(List<BillEntity> entities);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(source = "r.id", target = "systemId")
+    @Mapping(source = "r.formattedReceiptNumber", target = "fullBillId")
+    @Mapping(source = "r.buyerName", target = "clientName")
+    @Mapping(source = "r.buyerOib", target = "clientOib")
+    @Mapping(target = "billDate", expression = "java(java.time.LocalDateTime.parse(r.issueDateTime()))")
+    @Mapping(target = "totalAmount", expression = "java(java.math.BigDecimal.valueOf(r.grandTotal()))")
+    @Mapping(target = "documentStatus", ignore = true)
+    @Mapping(source = "billType", target = "billType")
+    @Mapping(target = "sentCount", ignore = true)
+    BillResponse toBillResponse(ReceiptDto r, BillType billType);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(source = "dsr.id", target = "systemId")
+    @Mapping(source = "dsr.documentId", target = "fullBillId")
+    @Mapping(source = "dsr.customerPartyName", target = "clientName")
+    @Mapping(source = "dsr.customerPartyVATId", target = "clientOib")
+    @Mapping(target = "billDate", expression = "java(java.time.LocalDateTime.parse(dsr.issuedOn()))")
+    @Mapping(target = "totalAmount", expression = "java(java.math.BigDecimal.valueOf(dsr.amount()))")
+    @Mapping(source = "dsr.status", target = "documentStatus")
+    @Mapping(source = "billType", target = "billType")
+    @Mapping(target = "sentCount", ignore = true)
+    BillResponse toBillResponse(DocumentStatusResponse dsr, BillType billType);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(source = "dsr.id", target = "systemId")
+    @Mapping(source = "dsr.documentId", target = "fullBillId")
+    @Mapping(source = "dsr.supplierPartyName", target = "clientName")
+    @Mapping(source = "dsr.supplierPartyVATId", target = "clientOib")
+    @Mapping(target = "billDate", expression = "java(java.time.LocalDateTime.parse(dsr.issuedOn()))")
+    @Mapping(target = "totalAmount", expression = "java(java.math.BigDecimal.valueOf(dsr.amount()))")
+    @Mapping(source = "dsr.status", target = "documentStatus")
+    @Mapping(source = "billType", target = "billType")
+    @Mapping(target = "sentCount", ignore = true)
+    BillResponse toIngoingBillResponse(DocumentStatusResponse dsr, BillType billType);
 }

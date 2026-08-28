@@ -1,12 +1,6 @@
 package hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.request;
 
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.BrojRacuna;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.NacinPlacanjaType;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.Naknada;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.OstaliPorez;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.OznakaSlijednostiType;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.PDV;
-import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.PNP;
+import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.*;
 import lombok.Builder;
 
 import java.util.List;

@@ -21,14 +21,11 @@ import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.b2c.F1BillRequest;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
-import hr.bill.spring_bill.mapper.BillEntityMapper;
-import hr.bill.spring_bill.mapper.BillInfoMapper;
-import hr.bill.spring_bill.mapper.CamtStatementMapper;
-import hr.bill.spring_bill.mapper.PaymentInfoMapper;
-import hr.bill.spring_bill.mapper.ReceiptBillRequestMapper;
+import hr.bill.spring_bill.mapper.*;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
@@ -39,7 +36,6 @@ import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.MethodInvocationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -92,6 +88,27 @@ public class F1OutgoingStrategy implements BillStrategy {
     public List<BillResponse> getBills() {
         List<BillEntity> bills = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F1_BILL);
         return billEntityMapper.toBillResponseList(bills);
+    }
+
+    @Override
+    public List<BillResponse> getBillsFilter(BillSearchParams params) {
+        LocalDateTime from = params.dateFrom() == null ? null : params.dateFrom().atStartOfDay();
+        LocalDateTime to = params.dateTill() == null ? null : params.dateTill().plusDays(1).atStartOfDay();
+        List<ReceiptSummaryDto> receipts = f1WebClient.getReceipts(GetReceiptsQuery.builder()
+                        .dateFrom(from == null ? null : from.format(DateTimeFormatter.ISO_DATE_TIME))
+                        .dateTo(to == null ? null : to.format(DateTimeFormatter.ISO_DATE_TIME))
+                        .build())
+                .items().stream()
+                .filter(ri -> {
+                    LocalDateTime issueDateTime = LocalDateTime.parse(ri.issueDateTime());
+                    return (from == null || !issueDateTime.isBefore(from))
+                            && (to == null || issueDateTime.isBefore(to));
+                })
+                .toList();
+        return receipts.stream()
+                .map(ri -> f1WebClient.getReceipt(ri.id()))
+                .map(receiptDto -> billEntityMapper.toBillResponse(receiptDto, BillType.F1_BILL))
+                .toList();
     }
 
     @Override

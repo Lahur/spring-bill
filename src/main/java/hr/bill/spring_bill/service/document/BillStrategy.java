@@ -1,9 +1,9 @@
 package hr.bill.spring_bill.service.document;
 
-import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 
@@ -14,6 +14,8 @@ import java.util.Optional;
 public interface BillStrategy extends DocumentStrategy {
 
     List<BillResponse> getBills();
+
+    List<BillResponse> getBillsFilter(BillSearchParams params);
 
     PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart);
 

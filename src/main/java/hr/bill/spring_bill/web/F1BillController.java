@@ -2,6 +2,7 @@ package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.b2c.F1BillRequest;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.service.document.F1OutgoingStrategy;
@@ -32,6 +33,16 @@ public class F1BillController {
     })
     public List<BillResponse> getBills() {
         return f1OutgoingStrategy.getBills();
+    }
+
+    @PostMapping("/filter")
+    @Operation(summary = "Get bills filtered by date range")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public List<BillResponse> getBillsFilter(@RequestBody BillSearchParams params) {
+        return f1OutgoingStrategy.getBillsFilter(params);
     }
 
     @PostMapping

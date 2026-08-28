@@ -6,7 +6,6 @@ import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
 import hr.bill.spring_bill.clients.eposlovanje_util.EposlovanjeUtilClient;
 import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dao.BillRepository;
-import hr.bill.spring_bill.dto.bill_pdf.request.BillWithDetailsRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.IncomingInvoiceRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.common.DocumentStatus;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.request.DocumentChangeStatusRequest;
@@ -17,13 +16,10 @@ import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
-import hr.bill.spring_bill.mapper.BillEntityMapper;
-import hr.bill.spring_bill.mapper.BillInfoMapper;
-import hr.bill.spring_bill.mapper.CamtStatementMapper;
-import hr.bill.spring_bill.mapper.PaymentInfoMapper;
-import hr.bill.spring_bill.mapper.UblInvoiceMapper;
+import hr.bill.spring_bill.mapper.*;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
@@ -90,6 +86,20 @@ public class IngoingStrategy implements BillStrategy {
     public List<BillResponse> getBills() {
         List<BillEntity> bills = repository.findAllByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL);
         return billEntityMapper.toBillResponseList(bills);
+    }
+
+    @Override
+    public List<BillResponse> getBillsFilter(BillSearchParams params) {
+        DocumentListParams.DocumentListParamsBuilder queryBuilder = DocumentListParams.builder();
+        if (params.dateFrom() != null) {
+            queryBuilder.issuedFrom(params.dateFrom().atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        if (params.dateTill() != null) {
+            queryBuilder.issuedTo(params.dateTill().plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        return eposlovanjeClient.getIncomingDocuments(queryBuilder.build()).stream()
+                .map(dsr -> billEntityMapper.toIngoingBillResponse(dsr, BillType.INGOING_BILL))
+                .toList();
     }
 
     @Override

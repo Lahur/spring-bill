@@ -1,11 +1,6 @@
 package hr.bill.spring_bill.dto.bill_pdf.request;
 
-import hr.bill.spring_bill.dto.bill_pdf.common.IncomingCustomerDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.IncomingPaymentMeansDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.IncomingSupplierDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.IncomingTaxTotalDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.InvoiceLineDto;
-import hr.bill.spring_bill.dto.bill_pdf.common.MonetaryTotalDto;
+import hr.bill.spring_bill.dto.bill_pdf.common.*;
 import lombok.Builder;
 
 import java.util.List;

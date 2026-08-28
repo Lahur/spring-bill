@@ -6,22 +6,10 @@ import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.ChangePaymentMethodDto
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.CreateReceiptDto;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.GetReceiptsQuery;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.UpdateReceiptDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.CreditNoteReadinessDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.FiscalizationReadinessDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.FiscalizationResultDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptListResultDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptStatisticsDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptSummaryDto;
-import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ValidationResultDto;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.*;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 

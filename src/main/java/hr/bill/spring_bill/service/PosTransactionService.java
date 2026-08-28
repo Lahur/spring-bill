@@ -2,8 +2,6 @@ package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.clients.mail_bill.MailBillClient;
 import hr.bill.spring_bill.dao.PosTransactionRepository;
-import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
-import hr.bill.spring_bill.dto.web.pos.PosTransactionGenerateAndSendRequest;
 import hr.bill.spring_bill.dto.web.pos.PosTransactionResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
 import hr.bill.spring_bill.mapper.PosTransactionMapper;
@@ -12,22 +10,15 @@ import hr.bill.spring_bill.model.PosTransactionEntity;
 import hr.bill.spring_bill.service.document.PosStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.io.IOUtils;
-import org.apache.pdfbox.io.RandomAccessReadBuffer;
-import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 

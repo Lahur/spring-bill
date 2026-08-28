@@ -61,6 +61,15 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
                                                           @Param("from") LocalDateTime from,
                                                           @Param("to") LocalDateTime to);
 
+    @Query("SELECT b FROM BillEntity b " +
+            "WHERE b.billType = :billType " +
+            "AND (:from IS NULL OR b.billDate >= :from) " +
+            "AND (:to IS NULL OR b.billDate < :to) " +
+            "ORDER BY b.billDate DESC")
+    List<BillEntity> findAllByBillTypeAndBillDateBetweenOptional(@Param("billType") BillType billType,
+                                                                  @Param("from") LocalDateTime from,
+                                                                  @Param("to") LocalDateTime to);
+
     @Query(value = "SELECT CAST(bill_date AS date) AS day, COALESCE(SUM(total_amount), 0) AS total FROM bill " +
             "WHERE bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
             "GROUP BY CAST(bill_date AS date)", nativeQuery = true)

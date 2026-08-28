@@ -1,6 +1,7 @@
 package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
+import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.service.document.IngoingStrategy;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,11 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -34,6 +31,16 @@ public class IngoingBillController {
     })
     public List<BillResponse> getBills() {
         return ingoingStrategy.getBills();
+    }
+
+    @PostMapping("/filter")
+    @Operation(summary = "Get bills filtered by date range")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public List<BillResponse> getBillsFilter(@RequestBody BillSearchParams params) {
+        return ingoingStrategy.getBillsFilter(params);
     }
 
     @GetMapping("/{id}")
