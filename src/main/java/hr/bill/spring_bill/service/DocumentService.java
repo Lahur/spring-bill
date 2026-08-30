@@ -8,11 +8,21 @@ import hr.bill.spring_bill.service.document.BillDocument;
 import hr.bill.spring_bill.service.document.DocumentStrategyFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.multipdf.LayerUtility;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.util.Matrix;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.awt.geom.AffineTransform;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -63,7 +73,7 @@ public class DocumentService {
                 merger.addSource(pdfFile.toFile());
             }
             merger.mergeDocuments(IOUtils.createMemoryOnlyStreamCache());
-            fileContent = Base64.getEncoder().encodeToString(mergedOutput.toByteArray());
+            fileContent = Base64.getEncoder().encodeToString(normalizeToA4(mergedOutput.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -80,6 +90,56 @@ public class DocumentService {
 
         for (SendBillReportItem item : sendBillReportsRequest.reports()) {
             documentStrategyFactory.incrementSentCount(item.type(), item.id());
+        }
+    }
+
+    // Source documents are rendered at wildly different page sizes (A4 invoices,
+    // narrow POS receipt rolls, ...). Re-lay every merged page onto an A4 sheet,
+    // scaling the original content to fit while keeping its aspect ratio and never
+    // enlarging it, so the mailed PDF is a single uniform format. Content is
+    // anchored to the top-left corner, so small receipts sit there rather than
+    // floating in the middle of the page.
+    private byte[] normalizeToA4(byte[] merged) throws IOException {
+        float a4Width = PDRectangle.A4.getWidth();
+        float a4Height = PDRectangle.A4.getHeight();
+
+        try (PDDocument source = Loader.loadPDF(merged);
+             PDDocument target = new PDDocument()) {
+            LayerUtility layerUtility = new LayerUtility(target);
+
+            for (int i = 0; i < source.getNumberOfPages(); i++) {
+                PDPage a4Page = new PDPage(PDRectangle.A4);
+                target.addPage(a4Page);
+
+                // importPageAsForm bakes the source page's rotation and crop box into
+                // the form, so its BBox is the visible content size.
+                PDFormXObject form = layerUtility.importPageAsForm(source, i);
+                PDRectangle bbox = form.getBBox();
+                float contentWidth = bbox.getWidth();
+                float contentHeight = bbox.getHeight();
+
+                float scale = Math.min(a4Width / contentWidth, a4Height / contentHeight);
+                scale = Math.min(scale, 1f); // fit only, never upscale
+
+                float scaledHeight = contentHeight * scale;
+
+                // PDF origin is bottom-left; anchor top-left: x = 0, y = top of the sheet.
+                AffineTransform transform = new AffineTransform();
+                transform.translate(0f, a4Height - scaledHeight);
+                transform.scale(scale, scale);
+                transform.translate(-bbox.getLowerLeftX(), -bbox.getLowerLeftY());
+
+                try (PDPageContentStream cs = new PDPageContentStream(target, a4Page, AppendMode.APPEND, true, true)) {
+                    cs.saveGraphicsState();
+                    cs.transform(new Matrix(transform));
+                    cs.drawForm(form);
+                    cs.restoreGraphicsState();
+                }
+            }
+
+            ByteArrayOutputStream normalized = new ByteArrayOutputStream();
+            target.save(normalized);
+            return normalized.toByteArray();
         }
     }
 
