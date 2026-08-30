@@ -31,7 +31,7 @@ public interface PosTransactionMapper {
     @Mapping(target = "transactionId", expression = "java(entity.getId().toString())")
     @Mapping(target = "bankTransactionId", expression = "java(entity.getBankTransaction().getId().toString())")
     @Mapping(target = "amount", expression = "java(formatAmount(entity.getBankTransaction().getAmount()))")
-    @Mapping(source = "bankTransaction.bankStatement.currency", target = "currencyCode")
+    @Mapping(target = "currencyCode", constant = "EUR")
     @Mapping(source = "bankTransaction.senderIban", target = "senderIban")
     @Mapping(source = "bankTransaction.receiverIban", target = "receiverIban")
     @Mapping(source = "bankTransaction.reference", target = "reference")
