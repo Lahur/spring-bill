@@ -40,7 +40,6 @@ import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import hr.bill.spring_bill.service.UblXmlService;
-import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,8 +79,6 @@ public class F2ReportStrategy implements BillStrategy {
     private final BillInfoEntityMapper billInfoEntityMapper;
 
     private final BillInfoMapper billInfoMapper;
-
-    private final CamtStatementMapper camtStatementMapper;
 
     private final PaymentReferenceMatcher paymentReferenceMatcher;
 
@@ -291,8 +288,7 @@ public class F2ReportStrategy implements BillStrategy {
     }
 
     @Override
-    public int markPaidFromBankStatement(CamtDocument statement) {
-        List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(statement, null);
+    public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F2_REPORT);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
@@ -302,6 +298,7 @@ public class F2ReportStrategy implements BillStrategy {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
                     repository.save(bill);
+                    tx.setBillSystemId(billSystemId(bill));
                     updated++;
                     break;
                 }

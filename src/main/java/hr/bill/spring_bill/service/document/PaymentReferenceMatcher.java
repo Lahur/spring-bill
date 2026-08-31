@@ -21,7 +21,7 @@ public class PaymentReferenceMatcher {
 
     public Set<String> paidReferences(CreditDebitIndicator indicator, String receiverIban) {
         log.debug("Loading paid references for indicator {} and receiver IBAN {}", indicator, receiverIban);
-        Set<String> references = bankTransactionRepository.findAllByCreditDebitIndicatorAndReceiverIbanIgnoreCase(indicator, receiverIban).stream()
+        Set<String> references = bankTransactionRepository.findAllByCreditDebitIndicatorAndReceiverIbanIgnoreCaseOrderByTransactionDateDesc(indicator, receiverIban).stream()
                 .map(BankTransactionEntity::getReference)
                 .filter(Objects::nonNull)
                 .map(PaymentReferenceMatcher::normalize)

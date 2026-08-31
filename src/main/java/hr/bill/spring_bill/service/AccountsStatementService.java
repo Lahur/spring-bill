@@ -40,7 +40,7 @@ public class AccountsStatementService {
 
     public List<AccountsStatementResponse> findAll() {
         log.debug("Fetching all accounts statements");
-        List<AccountsStatementEntity> result = accountsStatementRepository.findAll();
+        List<AccountsStatementEntity> result = accountsStatementRepository.findAllByOrderByDateDesc();
         log.debug("Found {} accounts statements", result.size());
         return accountsStatementMapper.toAccountsStatementResponseList(result);
     }

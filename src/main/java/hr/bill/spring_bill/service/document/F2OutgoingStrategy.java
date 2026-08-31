@@ -36,7 +36,6 @@ import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.*;
-import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,8 +84,6 @@ public class F2OutgoingStrategy implements BillStrategy {
     private final BillEntityMapper billEntityMapper;
 
     private final BillInfoMapper billInfoMapper;
-
-    private final CamtStatementMapper camtStatementMapper;
 
     private final PaymentReferenceMatcher paymentReferenceMatcher;
 
@@ -356,8 +353,7 @@ public class F2OutgoingStrategy implements BillStrategy {
     }
 
     @Override
-    public int markPaidFromBankStatement(CamtDocument statement) {
-        List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(statement, null);
+    public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F2_BILL);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
@@ -367,6 +363,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
                     repository.save(bill);
+                    tx.setBillSystemId(billSystemId(bill));
                     updated++;
                     break;
                 }

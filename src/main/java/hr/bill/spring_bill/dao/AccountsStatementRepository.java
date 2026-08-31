@@ -8,5 +8,7 @@ import java.util.UUID;
 
 public interface AccountsStatementRepository extends JpaRepository<AccountsStatementEntity, UUID> {
 
+    List<AccountsStatementEntity> findAllByOrderByDateDesc();
+
     List<AccountsStatementEntity> findAllByIdInOrderByDateDesc(List<UUID> ids);
 }

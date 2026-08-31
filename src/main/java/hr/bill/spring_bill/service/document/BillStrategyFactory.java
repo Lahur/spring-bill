@@ -1,7 +1,7 @@
 package hr.bill.spring_bill.service.document;
 
 import hr.bill.spring_bill.dto.web.BillReportType;
-import hr.bill.spring_bill.xml.camt.model.CamtDocument;
+import hr.bill.spring_bill.model.BankTransactionEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -23,10 +23,10 @@ public class BillStrategyFactory extends DocumentStrategyFactory {
                 .collect(Collectors.toMap(BillStrategy::getType, Function.identity()));
     }
 
-    public int markPaidFromBankStatement(CamtDocument statement) {
+    public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
         log.debug("Marking bills paid from bank statement across {} strategies", billStrategies.size());
         int matched = billStrategies.values().stream()
-                .mapToInt(strategy -> strategy.markPaidFromBankStatement(statement))
+                .mapToInt(strategy -> strategy.markPaidFromBankStatement(transactions))
                 .sum();
         log.debug("Matched {} bill(s) as paid across all strategies", matched);
         return matched;

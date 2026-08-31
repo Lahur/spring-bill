@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface CashWithdrawalBalanceRepository extends JpaRepository<CashWithdrawalBalanceEntity, UUID> {
 
+    List<CashWithdrawalBalanceEntity> findAllByOrderByBankTransaction_TransactionDateDesc();
+
     List<CashWithdrawalBalanceEntity> findAllByBalanceGreaterThanOrderByBankTransaction_TransactionDate(
             BigDecimal balance);
 }

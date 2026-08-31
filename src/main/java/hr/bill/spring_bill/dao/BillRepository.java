@@ -56,7 +56,8 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
                                                             @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT * FROM bill " +
-            "WHERE bill_type = :billType AND bill_date >= :from AND bill_date < :to", nativeQuery = true)
+            "WHERE bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
+            "ORDER BY bill_date DESC", nativeQuery = true)
     List<BillEntity> findAllByBillTypeAndBillDateBetween(@Param("billType") String billType,
                                                           @Param("from") LocalDateTime from,
                                                           @Param("to") LocalDateTime to);

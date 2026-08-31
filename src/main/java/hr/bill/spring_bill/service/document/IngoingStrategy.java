@@ -28,7 +28,6 @@ import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.CroatianTimeZone;
 import hr.bill.spring_bill.service.HrPaymentReferenceService;
 import hr.bill.spring_bill.service.UblXmlService;
-import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.UblAdditionalDocumentReference;
 import hr.bill.spring_bill.xml.ubl.model.UblInvoice;
 import lombok.RequiredArgsConstructor;
@@ -74,8 +73,6 @@ public class IngoingStrategy implements BillStrategy {
     private final BillEntityMapper billEntityMapper;
 
     private final BillInfoMapper billInfoMapper;
-
-    private final CamtStatementMapper camtStatementMapper;
 
     private final BillRepository repository;
 
@@ -285,8 +282,7 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     @Override
-    public int markPaidFromBankStatement(CamtDocument statement) {
-        List<BankTransactionEntity> transactions = camtStatementMapper.toBankTransactionEntities(statement, null);
+    public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
@@ -302,6 +298,7 @@ public class IngoingStrategy implements BillStrategy {
                     }
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
                     repository.save(bill);
+                    tx.setBillSystemId(billSystemId(bill));
                     updated++;
                     break;
                 }

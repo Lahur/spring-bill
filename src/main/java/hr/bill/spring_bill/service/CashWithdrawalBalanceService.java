@@ -54,7 +54,8 @@ public class CashWithdrawalBalanceService {
 
     public List<CashWithdrawalBalanceResponse> findAll() {
         log.debug("Fetching all cash withdrawal balances");
-        List<CashWithdrawalBalanceEntity> result = cashWithdrawalBalanceRepository.findAll();
+        List<CashWithdrawalBalanceEntity> result = cashWithdrawalBalanceRepository
+                .findAllByOrderByBankTransaction_TransactionDateDesc();
         log.debug("Found {} cash withdrawal balances", result.size());
         return cashWithdrawalBalanceMapper.toCashWithdrawalBalanceResponseList(result);
     }

@@ -143,7 +143,10 @@ public class BankStatementImportService {
                 bt.getTransactionType().equals(BankTransactionType.BANK_WITHDRAWAL)).toList());
         log.debug("Saved bank statement {} with {} transaction(s)", statement.getId(), transactions.size());
 
-        int matched = billStrategyFactory.markPaidFromBankStatement(document);
+        int matched = billStrategyFactory.markPaidFromBankStatement(transactions);
+        if (matched > 0) {
+            bankTransactionRepository.saveAll(transactions);
+        }
         log.info("Bank statement {} matched {} bill(s) as paid", statement.getId(), matched);
 
         return bankStatementMapper.toBankStatementResponse(statement);

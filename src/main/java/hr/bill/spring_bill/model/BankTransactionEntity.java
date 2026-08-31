@@ -70,4 +70,7 @@ public class BankTransactionEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", length = 20)
     private BankTransactionType transactionType;
+
+    @Column(name = "bill_system_id")
+    private String billSystemId;
 }
