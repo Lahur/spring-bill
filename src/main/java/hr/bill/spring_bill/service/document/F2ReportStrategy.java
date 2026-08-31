@@ -311,6 +311,9 @@ public class F2ReportStrategy implements BillStrategy {
         int quantity = negative ? -1 : 1;
         VatCategory vatCat = request.getVatCategory();
         BigDecimal lineExt = request.getBaseAmount().multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
+        // BT-146 (Item net price) must never be negative per EN16931 BR-27. For a storno the
+        // sign is carried by the invoiced quantity (-1) and the line extension amount, not the price.
+        BigDecimal unitPrice = request.getBaseAmount().abs().setScale(2, RoundingMode.HALF_UP);
         BigDecimal taxAmount = lineExt.multiply(vatCat.getRate())
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         BigDecimal taxInclusive = lineExt.add(taxAmount);
@@ -330,7 +333,7 @@ public class F2ReportStrategy implements BillStrategy {
                 "71.12.20",
                 String.valueOf(quantity),
                 "H87",
-                lineExt.toPlainString(),
+                unitPrice.toPlainString(),
                 lineExt.toPlainString(),
                 vatCat.getId()
         );
