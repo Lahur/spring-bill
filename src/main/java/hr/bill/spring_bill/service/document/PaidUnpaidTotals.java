@@ -11,4 +11,12 @@ public record PaidUnpaidTotals(BigDecimal paid, BigDecimal unpaid) {
     public PaidUnpaidTotals add(PaidUnpaidTotals other) {
         return new PaidUnpaidTotals(paid.add(other.paid), unpaid.add(other.unpaid));
     }
+
+    /**
+     * A negative unpaid total can arise when storno / credit-note bills in the period outweigh the
+     * open ones; floor it at zero before surfacing the figure to users.
+     */
+    public PaidUnpaidTotals withNonNegativeUnpaid() {
+        return unpaid.signum() < 0 ? new PaidUnpaidTotals(paid, BigDecimal.ZERO) : this;
+    }
 }

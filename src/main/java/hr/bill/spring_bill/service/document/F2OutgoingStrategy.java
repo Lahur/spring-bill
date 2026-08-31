@@ -109,9 +109,10 @@ public class F2OutgoingStrategy implements BillStrategy {
         if (params.dateTill() != null) {
             queryBuilder.issuedTo(params.dateTill().plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
         }
-        return eposlovanjeClient.getOutgoingDocuments(queryBuilder.build()).stream()
+        List<BillResponse> bills = eposlovanjeClient.getOutgoingDocuments(queryBuilder.build()).stream()
                 .map(dsr -> billEntityMapper.toBillResponse(dsr, BillType.F2_BILL))
                 .toList();
+        return paymentReferenceMatcher.markPaidByBillSystemId(bills);
     }
 
     @Override
@@ -121,12 +122,17 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .issuedFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .issuedTo(monthStart.plusMonths(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .build();
+        List<DocumentStatusResponse> documents = eposlovanjeClient.getOutgoingDocuments(params);
         Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        Set<String> paidBillSystemIds = paymentReferenceMatcher.paidBillSystemIds(documents.stream()
+                .map(d -> String.valueOf(d.id()))
+                .toList());
         BigDecimal paid = BigDecimal.ZERO;
         BigDecimal unpaid = BigDecimal.ZERO;
-        for (DocumentStatusResponse d : eposlovanjeClient.getOutgoingDocuments(params)) {
+        for (DocumentStatusResponse d : documents) {
             BigDecimal amount = BigDecimal.valueOf(d.amount());
-            if (paymentReferenceMatcher.isPaid(paidReferences, d.documentId())) {
+            if (paidBillSystemIds.contains(String.valueOf(d.id()))
+                    || paymentReferenceMatcher.isPaid(paidReferences, d.documentId())) {
                 paid = paid.add(amount);
             } else {
                 unpaid = unpaid.add(amount);

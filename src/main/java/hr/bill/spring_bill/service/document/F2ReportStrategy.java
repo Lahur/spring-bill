@@ -109,7 +109,7 @@ public class F2ReportStrategy implements BillStrategy {
         LocalDateTime from = params.dateFrom() == null ? null : params.dateFrom().atStartOfDay();
         LocalDateTime to = params.dateTill() == null ? null : params.dateTill().plusDays(1).atStartOfDay();
         List<BillEntity> bills = repository.findAllByBillTypeAndBillDateBetweenOptional(BillType.F2_REPORT, from, to);
-        return billEntityMapper.toBillResponseList(bills);
+        return paymentReferenceMatcher.markPaidByBillSystemId(billEntityMapper.toBillResponseList(bills));
     }
 
     @Override
@@ -120,10 +120,16 @@ public class F2ReportStrategy implements BillStrategy {
         List<BillEntity> bills = repository.findAllByBillTypeAndBillDateBetween(
                 BillType.F2_REPORT.name(), monthStart.atStartOfDay(), monthStart.plusMonths(1).atStartOfDay());
         Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        Set<String> paidBillSystemIds = paymentReferenceMatcher.paidBillSystemIds(bills.stream()
+                .map(BillEntity::getSystemId)
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .toList());
         BigDecimal paid = BigDecimal.ZERO;
         BigDecimal unpaid = BigDecimal.ZERO;
         for (BillEntity bill : bills) {
-            if (paymentReferenceMatcher.isPaid(paidReferences, bill.getFullBillId())) {
+            if ((bill.getSystemId() != null && paidBillSystemIds.contains(String.valueOf(bill.getSystemId())))
+                    || paymentReferenceMatcher.isPaid(paidReferences, bill.getFullBillId())) {
                 paid = paid.add(bill.getTotalAmount());
             } else {
                 unpaid = unpaid.add(bill.getTotalAmount());

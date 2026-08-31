@@ -4,6 +4,7 @@ import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,4 +14,6 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
             CreditDebitIndicator creditDebitIndicator, String receiverIban);
 
     List<BankTransactionEntity> findAllByBankStatement_IdOrderByTransactionDateAsc(UUID bankStatementId);
+
+    List<BankTransactionEntity> findAllByBillSystemIdIn(Collection<String> billSystemIds);
 }

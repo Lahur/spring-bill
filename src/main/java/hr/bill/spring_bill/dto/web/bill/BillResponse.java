@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Schema(description = "Response containing bill details")
-@Builder
+@Builder(toBuilder = true)
 public record BillResponse(
 
         @Schema(description = "Bill id")

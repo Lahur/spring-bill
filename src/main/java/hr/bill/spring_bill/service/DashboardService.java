@@ -38,12 +38,12 @@ public class DashboardService {
 
         BigDecimal salesPaidTotal = billRepository.sumPaidAmountByBillTypeNotAndBillDateBetween(
                 BillType.INGOING_BILL.name(), from, to);
-        BigDecimal salesUnpaidTotal = billRepository.sumUnpaidAmountByBillTypeNotAndBillDateBetween(
-                BillType.INGOING_BILL.name(), from, to);
+        BigDecimal salesUnpaidTotal = nonNegative(billRepository.sumUnpaidAmountByBillTypeNotAndBillDateBetween(
+                BillType.INGOING_BILL.name(), from, to));
         BigDecimal purchasesPaidTotal = billRepository.sumPaidAmountByBillTypeAndBillDateBetween(
                 BillType.INGOING_BILL.name(), from, to);
-        BigDecimal purchasesUnpaidTotal = billRepository.sumUnpaidAmountByBillTypeAndBillDateBetween(
-                BillType.INGOING_BILL.name(), from, to);
+        BigDecimal purchasesUnpaidTotal = nonNegative(billRepository.sumUnpaidAmountByBillTypeAndBillDateBetween(
+                BillType.INGOING_BILL.name(), from, to));
 
         return DashboardSummaryResponse.builder()
                 .salesPaidTotal(salesPaidTotal)
@@ -78,10 +78,15 @@ public class DashboardService {
                 .map(entity -> MonthlySummaryResponse.builder()
                         .month(entity.getMonth())
                         .salesPaidTotal(entity.getSalesPaidTotal())
-                        .salesUnpaidTotal(entity.getSalesUnpaidTotal())
+                        .salesUnpaidTotal(nonNegative(entity.getSalesUnpaidTotal()))
                         .purchasesPaidTotal(entity.getPurchasesPaidTotal())
-                        .purchasesUnpaidTotal(entity.getPurchasesUnpaidTotal())
+                        .purchasesUnpaidTotal(nonNegative(entity.getPurchasesUnpaidTotal()))
                         .build())
                 .toList();
+    }
+
+    /** Floors a negative unpaid total at zero; passes {@code null} through unchanged. */
+    private static BigDecimal nonNegative(BigDecimal value) {
+        return value != null && value.signum() < 0 ? BigDecimal.ZERO : value;
     }
 }

@@ -102,10 +102,11 @@ public class F1OutgoingStrategy implements BillStrategy {
                             && (to == null || issueDateTime.isBefore(to));
                 })
                 .toList();
-        return receipts.stream()
+        List<BillResponse> bills = receipts.stream()
                 .map(ri -> f1WebClient.getReceipt(ri.id()))
                 .map(receiptDto -> billEntityMapper.toBillResponse(receiptDto, BillType.F1_BILL))
                 .toList();
+        return paymentReferenceMatcher.markPaidByBillSystemId(bills);
     }
 
     @Override
@@ -117,6 +118,9 @@ public class F1OutgoingStrategy implements BillStrategy {
                 from.format(DateTimeFormatter.ISO_DATE_TIME),
                 to.format(DateTimeFormatter.ISO_DATE_TIME));
         Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        Set<String> paidBillSystemIds = paymentReferenceMatcher.paidBillSystemIds(receipts.stream()
+                .map(r -> String.valueOf(r.id()))
+                .toList());
         // The F1 web API's date-range filter isn't reliable, so re-check locally before summing,
         // the same way sync() re-validates results against its threshold.
         BigDecimal paid = BigDecimal.ZERO;
@@ -125,7 +129,8 @@ public class F1OutgoingStrategy implements BillStrategy {
             LocalDateTime issueDateTime = LocalDateTime.parse(r.issueDateTime());
             if (issueDateTime.isBefore(from) || !issueDateTime.isBefore(to)) continue;
             BigDecimal amount = BigDecimal.valueOf(r.grandTotal());
-            if (paymentReferenceMatcher.isPaid(paidReferences, r.formattedReceiptNumber())) {
+            if (paidBillSystemIds.contains(String.valueOf(r.id()))
+                    || paymentReferenceMatcher.isPaid(paidReferences, r.formattedReceiptNumber())) {
                 paid = paid.add(amount);
             } else {
                 unpaid = unpaid.add(amount);

@@ -91,12 +91,14 @@ public class MonthlySummaryScheduler {
         PaidUnpaidTotals sales = strategies.stream()
                 .filter(strategy -> strategy.getType() != BillReportType.INGOING)
                 .map(strategy -> strategy.getMonthlyTotals(month))
-                .reduce(PaidUnpaidTotals.zero(), PaidUnpaidTotals::add);
+                .reduce(PaidUnpaidTotals.zero(), PaidUnpaidTotals::add)
+                .withNonNegativeUnpaid();
 
         PaidUnpaidTotals purchases = strategies.stream()
                 .filter(strategy -> strategy.getType() == BillReportType.INGOING)
                 .map(strategy -> strategy.getMonthlyTotals(month))
-                .reduce(PaidUnpaidTotals.zero(), PaidUnpaidTotals::add);
+                .reduce(PaidUnpaidTotals.zero(), PaidUnpaidTotals::add)
+                .withNonNegativeUnpaid();
 
         return MonthlySummaryEntity.builder()
                 .month(month)
