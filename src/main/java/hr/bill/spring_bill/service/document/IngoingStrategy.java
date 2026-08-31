@@ -42,7 +42,9 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -214,17 +216,39 @@ public class IngoingStrategy implements BillStrategy {
         }, () -> {
             builder.issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
         });
-        List<DocumentStatusResponse> documentResponses = eposlovanjeClient.getIncomingDocuments(builder.build());
-        List<BillEntity> billEntities = documentResponses.stream()
-                .map(dsr -> {
-                    BillEntity billEntity = billEntityMapper.toIngoingBillEntity(dsr, BillType.INGOING_BILL);
-                    billEntity.setPaymentReference(fetchPaymentReference(dsr.id()));
-                    return billEntity;
-                })
+        // Documents newly issued since the last sync cursor, plus any document whose status changed
+        // today - the latter may have been issued before the cursor and would otherwise be missed.
+        Map<Long, DocumentStatusResponse> documents = new LinkedHashMap<>();
+        eposlovanjeClient.getIncomingDocuments(builder.build()).forEach(d -> documents.put(d.id(), d));
+        eposlovanjeClient.getIncomingDocuments(DocumentListParams.builder()
+                        .modifiedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .build())
+                .forEach(d -> documents.put(d.id(), d));
+
+        List<BillEntity> billEntities = documents.values().stream()
+                .map(this::toSyncedBillEntity)
                 .toList();
         logDuplicateSystemIds(billEntities);
         repository.saveAll(billEntities);
         log.info("Synced {} ingoing bill(s)", billEntities.size());
+    }
+
+    private BillEntity toSyncedBillEntity(DocumentStatusResponse dsr) {
+        BillEntity mapped = billEntityMapper.toIngoingBillEntity(dsr, BillType.INGOING_BILL);
+        return repository.findBySystemIdAndBillType(dsr.id(), BillType.INGOING_BILL)
+                .map(existing -> {
+                    existing.setDocumentStatus(mapped.getDocumentStatus());
+                    existing.setTotalAmount(mapped.getTotalAmount());
+                    existing.setClientName(mapped.getClientName());
+                    existing.setClientOib(mapped.getClientOib());
+                    existing.setFullBillId(mapped.getFullBillId());
+                    existing.setBillDate(mapped.getBillDate());
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    mapped.setPaymentReference(fetchPaymentReference(dsr.id()));
+                    return mapped;
+                });
     }
 
     private String fetchPaymentReference(Long id) {

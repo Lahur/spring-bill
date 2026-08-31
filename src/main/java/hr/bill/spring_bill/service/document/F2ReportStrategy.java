@@ -44,6 +44,7 @@ import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import hr.bill.spring_bill.xml.ubl.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -89,6 +90,9 @@ public class F2ReportStrategy implements BillStrategy {
     private final BillInfoRepository billInfoRepository;
 
     private final BillItemRepository billItemRepository;
+
+    @Value("${bill.eposlovanje.post-send-delay-ms:2000}")
+    private long postSendDelayMs;
 
     @Override
     public BillReportType getType() {
@@ -220,6 +224,12 @@ public class F2ReportStrategy implements BillStrategy {
                 .type("IR")
                 .build();
         eposlovanjeClient.reportDocument(reportDocumentRequest);
+        try {
+            Thread.sleep(postSendDelayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
                 .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .issuedTo(LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ISO_DATE_TIME))
