@@ -31,6 +31,12 @@ public class CashWithdrawalBalanceEntity {
     @Column(name = "sent_count", nullable = false)
     private int sentCount = 0;
 
+    @Column(name = "disbursement_number")
+    private Integer disbursementNumber;
+
+    @Column(name = "deposit_number")
+    private Integer depositNumber;
+
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "bank_transaction_id", nullable = false)
     private BankTransactionEntity bankTransaction;

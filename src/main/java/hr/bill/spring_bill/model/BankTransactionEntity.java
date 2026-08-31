@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -39,14 +40,32 @@ public class BankTransactionEntity {
     @Column(name = "receiver_iban", length = 34)
     private String receiverIban;
 
+    @Column(name = "counterparty_name", length = 140)
+    private String counterpartyName;
+
+    @Column(name = "counterparty_address", length = 210)
+    private String counterpartyAddress;
+
     @Column(name = "reference", length = 35)
     private String reference;
+
+    @Column(name = "payer_reference", length = 35)
+    private String payerReference;
+
+    @Column(name = "entry_reference", length = 64)
+    private String entryReference;
+
+    @Column(name = "transaction_reference", length = 64)
+    private String transactionReference;
 
     @Column(name = "additional_remittance_info", length = 140)
     private String additionalRemittanceInfo;
 
     @Column(name = "transaction_date")
     private LocalDateTime transactionDate;
+
+    @Column(name = "value_date")
+    private LocalDate valueDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", length = 20)

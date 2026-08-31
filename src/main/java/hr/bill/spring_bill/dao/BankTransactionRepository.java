@@ -11,4 +11,6 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
     List<BankTransactionEntity> findAllByCreditDebitIndicatorAndReceiverIbanIgnoreCase(
             CreditDebitIndicator creditDebitIndicator, String receiverIban);
+
+    List<BankTransactionEntity> findAllByBankStatement_IdOrderByTransactionDateAsc(UUID bankStatementId);
 }

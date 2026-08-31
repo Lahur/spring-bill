@@ -30,6 +30,9 @@ public record BankStatementResponse(
         LocalDate periodTo,
 
         @Schema(description = "When the statement was created by the bank")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+
+        @Schema(description = "Number of times the statement PDF has been sent", example = "2")
+        int sentCount
 ) {
 }

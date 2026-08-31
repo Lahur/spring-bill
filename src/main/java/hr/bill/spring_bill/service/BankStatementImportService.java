@@ -3,6 +3,9 @@ package hr.bill.spring_bill.service;
 import hr.bill.spring_bill.dao.BankStatementRepository;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
 import hr.bill.spring_bill.dto.web.BankStatementResponse;
+import hr.bill.spring_bill.dto.web.BillReportType;
+import hr.bill.spring_bill.dto.web.SendBillReportItem;
+import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
 import hr.bill.spring_bill.mapper.BankStatementMapper;
 import hr.bill.spring_bill.mapper.CamtStatementMapper;
 import hr.bill.spring_bill.model.BankStatementEntity;
@@ -44,6 +47,8 @@ public class BankStatementImportService {
 
     private final BankStatementMapper bankStatementMapper;
 
+    private final DocumentService documentService;
+
     private final MonthlySummaryScheduler monthlySummaryScheduler;
 
     public List<BankStatementResponse> findAll() {
@@ -59,7 +64,7 @@ public class BankStatementImportService {
         return importStatementXml(readXml(file));
     }
 
-    public List<BankStatementResponse> importStatements(List<MultipartFile> files) {
+    public List<BankStatementResponse> importStatements(List<MultipartFile> files, String email) {
         log.info("Importing {} bank statement file(s)", files.size());
         List<BankStatementResponse> imported = new ArrayList<>();
         for (MultipartFile file : files) {
@@ -75,7 +80,25 @@ public class BankStatementImportService {
         }
         log.info("Imported {} bank statement(s) from {} file(s)", imported.size(), files.size());
         monthlySummaryScheduler.refreshRecentMonths();
+        if (email != null && !email.isBlank() && !imported.isEmpty()) {
+            sendImportedStatements(imported, email.trim());
+        }
         return imported;
+    }
+
+    private void sendImportedStatements(List<BankStatementResponse> imported, String email) {
+        log.info("Sending {} imported bank statement(s) as PDF to {}", imported.size(), email);
+        List<SendBillReportItem> reports = imported.stream()
+                .map(statement -> SendBillReportItem.builder()
+                        .id(statement.id().toString())
+                        .billId(statement.statementId())
+                        .type(BillReportType.BANK_STATEMENT)
+                        .build())
+                .toList();
+        documentService.generateAndSendDocuments(SendBillReportsRequest.builder()
+                .reports(reports)
+                .email(email)
+                .build());
     }
 
     public List<BankStatementResponse> importStatementsZip(MultipartFile zipFile) {

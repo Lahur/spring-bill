@@ -2,6 +2,7 @@ package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.dao.AccountsStatementRepository;
 import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
+import hr.bill.spring_bill.dao.TenantPropertyRepository;
 import hr.bill.spring_bill.dto.web.cashwithdrawal.AccountsStatementRequest;
 import hr.bill.spring_bill.dto.web.cashwithdrawal.CashWithdrawalBalanceResponse;
 import hr.bill.spring_bill.exception.NotFoundException;
@@ -10,6 +11,8 @@ import hr.bill.spring_bill.mapper.CashWithdrawalBalanceMapper;
 import hr.bill.spring_bill.model.AccountsStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.CashWithdrawalBalanceEntity;
+import hr.bill.spring_bill.model.TenantPropertyEntity;
+import hr.bill.spring_bill.model.enums.TenantPropety;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +26,10 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +47,8 @@ public class CashWithdrawalBalanceService {
 
     private final AccountsStatementMapper accountsStatementMapper;
 
+    private final TenantPropertyRepository tenantPropertyRepository;
+
     @Value("${bill.path.accounts-statement}")
     private String accountsStatementPath;
 
@@ -53,12 +60,31 @@ public class CashWithdrawalBalanceService {
     }
 
     public void importWithdrawalStatements(List<BankTransactionEntity> bankTransactions) {
+        Map<TenantPropety, TenantPropertyEntity> counters = loadCounters();
         List<CashWithdrawalBalanceEntity> cashWithdrawalBalances = bankTransactions.stream().map(bt -> CashWithdrawalBalanceEntity.builder()
                 .total(bt.getAmount())
                 .balance(bt.getAmount())
+                .disbursementNumber(increment(counters, TenantPropety.DISBURSEMENT_COUNT))
+                .depositNumber(increment(counters, TenantPropety.DEPOSIT_COUNT))
                 .bankTransaction(BankTransactionEntity.builder().id(bt.getId()).build())
                 .build()).toList();
         cashWithdrawalBalanceRepository.saveAll(cashWithdrawalBalances);
+    }
+
+    private Map<TenantPropety, TenantPropertyEntity> loadCounters() {
+        Map<TenantPropety, TenantPropertyEntity> counters = new EnumMap<>(TenantPropety.class);
+        tenantPropertyRepository.findByPropertyIn(List.of(TenantPropety.DEPOSIT_COUNT, TenantPropety.DISBURSEMENT_COUNT))
+                .forEach(entity -> counters.put(entity.getProperty(), entity));
+        return counters;
+    }
+
+    private int increment(Map<TenantPropety, TenantPropertyEntity> counters, TenantPropety property) {
+        TenantPropertyEntity entity = counters.computeIfAbsent(property,
+                p -> TenantPropertyEntity.builder().property(p).value("0").build());
+        int next = Integer.parseInt(entity.getValue()) + 1;
+        entity.setValue(String.valueOf(next));
+        tenantPropertyRepository.save(entity);
+        return next;
     }
 
     public List<CashWithdrawalBalanceResponse> createAccountsStatement(AccountsStatementRequest request, MultipartFile file) {

@@ -34,7 +34,9 @@ public class BankStatementController {
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload one or more camt.053 bank statement files (.xml or .zip archives of .xml files)",
-            description = "Parses each statement, saves its transactions, and marks any matching bills as fully paid.")
+            description = "Parses each statement, saves its transactions, and marks any matching bills as fully paid. "
+                    + "When an email address is supplied, the freshly imported statements are rendered to a single "
+                    + "PDF and emailed to that address.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Statements imported successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid or unparseable file"),
@@ -42,7 +44,9 @@ public class BankStatementController {
     })
     public List<BankStatementResponse> upload(
             @Parameter(description = "Bank statement files (.xml) or .zip archives containing them")
-            @RequestParam("files") List<MultipartFile> files) {
-        return bankStatementImportService.importStatements(files);
+            @RequestParam("files") List<MultipartFile> files,
+            @Parameter(description = "Optional email address to send the imported statements to as a PDF")
+            @RequestParam(value = "email", required = false) String email) {
+        return bankStatementImportService.importStatements(files, email);
     }
 }

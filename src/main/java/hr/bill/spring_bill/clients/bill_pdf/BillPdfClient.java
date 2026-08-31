@@ -32,4 +32,7 @@ public interface BillPdfClient {
 
     @PostMapping("/reports/deposit")
     byte[] renderDeposit(@RequestBody DepositRequest req);
+
+    @PostMapping("/reports/bank-statement")
+    byte[] renderBankStatement(@RequestBody BankStatementRequest req);
 }

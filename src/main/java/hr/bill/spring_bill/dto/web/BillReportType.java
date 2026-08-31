@@ -12,7 +12,8 @@ public enum BillReportType {
     F2_REPORT(4),
     CASH_WITHDRAWAL(5),
     ACCOUNTS_STATEMENT(6),
-    POS(7);
+    POS(7),
+    BANK_STATEMENT(8);
 
     private final Integer order;
 }

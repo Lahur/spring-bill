@@ -3,14 +3,11 @@ package hr.bill.spring_bill.service.document;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
-import hr.bill.spring_bill.dao.TenantPropertyRepository;
 import hr.bill.spring_bill.dto.bill_pdf.request.DepositRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.DisbursementRequest;
 import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.exception.NotFoundException;
 import hr.bill.spring_bill.model.CashWithdrawalBalanceEntity;
-import hr.bill.spring_bill.model.TenantPropertyEntity;
-import hr.bill.spring_bill.model.enums.TenantPropety;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +25,8 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -41,8 +34,6 @@ import java.util.stream.Collectors;
 public class CashWithdrawalStrategy implements DocumentStrategy {
 
     private final CashWithdrawalBalanceRepository cashWithdrawalBalanceRepository;
-
-    private final TenantPropertyRepository tenantPropertyRepository;
 
     private final BillPdfClient billPdfClient;
 
@@ -58,12 +49,13 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
         log.debug("Creating document for cash withdrawal {}", id);
         CashWithdrawalBalanceEntity entity = cashWithdrawalBalanceRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new NotFoundException("Cash withdrawal not found for id: " + id));
-        Map<TenantPropety, TenantPropertyEntity> tenantPropertyMap = tenantPropertyRepository.
-                findByPropertyIn(List.of(TenantPropety.DEPOSIT_COUNT, TenantPropety.DISBURSEMENT_COUNT)).stream().
-                collect(Collectors.toMap(TenantPropertyEntity::getProperty, Function.identity()));
 
-        int disbursementNumber = increment(tenantPropertyMap, TenantPropety.DISBURSEMENT_COUNT);
-        int depositNumber = increment(tenantPropertyMap, TenantPropety.DEPOSIT_COUNT);
+        if (entity.getDisbursementNumber() == null || entity.getDepositNumber() == null) {
+            throw new IllegalStateException(
+                    "Cash withdrawal " + id + " has no disbursement/deposit number assigned; re-import its bank statement");
+        }
+        int disbursementNumber = entity.getDisbursementNumber();
+        int depositNumber = entity.getDepositNumber();
 
         byte[] disbursement = billPdfClient.renderDisbursement(DisbursementRequest.builder()
                 .disbursementNumber(String.valueOf(disbursementNumber))
@@ -90,15 +82,6 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
                 .content(merge(deposit, disbursement))
                 .filename("cash-withdrawal-" + entity.getId())
                 .build();
-    }
-
-    private int increment(Map<TenantPropety, TenantPropertyEntity> tenantPropertyMap, TenantPropety property) {
-        TenantPropertyEntity entity = tenantPropertyMap.computeIfAbsent(property,
-                p -> TenantPropertyEntity.builder().property(p).value("0").build());
-        int next = Integer.parseInt(entity.getValue()) + 1;
-        entity.setValue(String.valueOf(next));
-        tenantPropertyRepository.save(entity);
-        return next;
     }
 
     private byte[] merge(byte[]... pdfs) {
