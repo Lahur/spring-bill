@@ -132,7 +132,8 @@ public class F2OutgoingStrategy implements BillStrategy {
         BigDecimal unpaid = BigDecimal.ZERO;
         for (DocumentStatusResponse d : documents) {
             BigDecimal amount = BigDecimal.valueOf(d.amount());
-            if (paidBillSystemIds.contains(String.valueOf(d.id()))
+            if (d.status() == DocumentStatus.PlacenUPotpunosti
+                    || paidBillSystemIds.contains(String.valueOf(d.id()))
                     || paymentReferenceMatcher.isPaid(paidReferences, d.documentId())) {
                 paid = paid.add(amount);
             } else {
