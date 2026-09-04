@@ -33,15 +33,16 @@ public class BillStrategyFactory extends DocumentStrategyFactory {
         return matched;
     }
 
-    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+    public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
         if (unresolvedTransactions.isEmpty()) {
-            return 0;
+            return RemoteMatchResult.empty();
         }
         log.debug("Resolving {} unmatched bank transaction(s) against upstream unpaid bills", unresolvedTransactions.size());
-        int matched = billStrategies.values().stream()
-                .mapToInt(strategy -> strategy.matchBillSystemIdsFromRemote(unresolvedTransactions, from, to))
-                .sum();
-        log.debug("Resolved {} bank transaction(s) from upstream unpaid bills", matched);
-        return matched;
+        RemoteMatchResult result = billStrategies.values().stream()
+                .map(strategy -> strategy.matchBillSystemIdsFromRemote(unresolvedTransactions, from, to))
+                .reduce(RemoteMatchResult.empty(), RemoteMatchResult::add);
+        log.debug("Resolved {} bank transaction(s) from upstream unpaid bills across {} month(s)",
+                result.matchedCount(), result.updatedMonths().size());
+        return result;
     }
 }

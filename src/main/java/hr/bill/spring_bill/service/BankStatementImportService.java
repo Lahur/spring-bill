@@ -12,6 +12,7 @@ import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.service.document.BillStrategyFactory;
+import hr.bill.spring_bill.service.document.RemoteMatchResult;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -156,10 +157,14 @@ public class BankStatementImportService {
         LocalDate matchFrom = statement.getPeriodFrom() == null
                 ? null
                 : statement.getPeriodFrom().minusMonths(remoteMatchLookbackMonths);
-        int remoteMatched = billStrategyFactory.matchBillSystemIdsFromRemote(unresolved, matchFrom, statement.getPeriodTo());
+        RemoteMatchResult remoteMatchResult = billStrategyFactory.matchBillSystemIdsFromRemote(unresolved, matchFrom, statement.getPeriodTo());
+        int remoteMatched = remoteMatchResult.matchedCount();
 
         if (matched > 0 || remoteMatched > 0) {
             bankTransactionRepository.saveAll(transactions);
+        }
+        if (!remoteMatchResult.updatedMonths().isEmpty()) {
+            monthlySummaryScheduler.refreshMonths(remoteMatchResult.updatedMonths());
         }
         log.info("Bank statement {} matched {} bill(s) locally and resolved {} more transaction(s) from upstream",
                 statement.getId(), matched, remoteMatched);

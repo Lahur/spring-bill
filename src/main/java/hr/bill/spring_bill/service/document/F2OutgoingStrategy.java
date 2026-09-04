@@ -381,13 +381,13 @@ public class F2OutgoingStrategy implements BillStrategy {
     }
 
     @Override
-    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+    public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
         List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
                 .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.CRDT)
                 .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban()))
                 .toList();
         if (candidates.isEmpty()) {
-            return 0;
+            return RemoteMatchResult.empty();
         }
         DocumentListParams.DocumentListParamsBuilder window = DocumentListParams.builder();
         if (from != null) {
@@ -400,18 +400,20 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .filter(d -> d.status() != DocumentStatus.PlacenUPotpunosti)
                 .toList();
         int updated = 0;
+        Set<LocalDate> updatedMonths = new HashSet<>();
         for (BankTransactionEntity tx : candidates) {
             for (DocumentStatusResponse document : unpaid) {
                 if (HrPaymentReferenceService.referencesMatch(tx.getReference(), document.documentId())) {
                     tx.setBillSystemId(String.valueOf(document.id()));
                     markLocalBillPaid(document.id());
+                    updatedMonths.add(LocalDateTime.parse(document.issuedOn()).toLocalDate().withDayOfMonth(1));
                     updated++;
                     break;
                 }
             }
         }
         log.info("Resolved {} bank transaction(s) against upstream unpaid F2 outgoing bills", updated);
-        return updated;
+        return new RemoteMatchResult(updated, updatedMonths);
     }
 
     private void markLocalBillPaid(Long systemId) {

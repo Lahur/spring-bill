@@ -43,6 +43,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -305,31 +306,33 @@ public class F1OutgoingStrategy implements BillStrategy {
     }
 
     @Override
-    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+    public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
         List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
                 .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.CRDT)
                 .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban()))
                 .toList();
         if (candidates.isEmpty()) {
-            return 0;
+            return RemoteMatchResult.empty();
         }
         // F1 receipts carry no payment status, so every receipt in the window is a match candidate.
         List<ReceiptSummaryDto> receipts = f1WebClient.getReceiptsByDateRange(
                 from == null ? null : from.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME),
                 to == null ? null : to.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
         int updated = 0;
+        Set<LocalDate> updatedMonths = new HashSet<>();
         for (BankTransactionEntity tx : candidates) {
             for (ReceiptSummaryDto receipt : receipts) {
                 if (HrPaymentReferenceService.referencesMatch(tx.getReference(), receipt.formattedReceiptNumber())) {
                     tx.setBillSystemId(String.valueOf(receipt.id()));
                     markLocalBillPaid(receipt.id().longValue());
+                    updatedMonths.add(LocalDateTime.parse(receipt.issueDateTime()).toLocalDate().withDayOfMonth(1));
                     updated++;
                     break;
                 }
             }
         }
         log.info("Resolved {} bank transaction(s) against upstream F1 receipts", updated);
-        return updated;
+        return new RemoteMatchResult(updated, updatedMonths);
     }
 
     private void markLocalBillPaid(long systemId) {

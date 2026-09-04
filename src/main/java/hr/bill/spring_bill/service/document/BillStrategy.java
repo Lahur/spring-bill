@@ -49,10 +49,11 @@ public interface BillStrategy extends DocumentStrategy {
      * match, set the transaction's {@code billSystemId} (marking the local bill paid too when it
      * exists). Strategies without an upstream source do nothing.
      *
-     * @return number of transactions newly assigned a {@code billSystemId}
+     * @return number of transactions newly assigned a {@code billSystemId}, together with the
+     * first-of-month dates of every matched bill so callers can refresh those months' summaries
      */
-    default int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
-        return 0;
+    default RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        return RemoteMatchResult.empty();
     }
 
     default String billSystemId(BillEntity bill) {

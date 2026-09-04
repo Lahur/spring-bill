@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -78,6 +80,22 @@ public class MonthlySummaryScheduler {
         log.info("Refreshing monthly summaries from {} to {}", from, currentMonth);
         monthlySummaryRepository.deleteByMonthGreaterThanEqualAndMonthLessThan(from, currentMonth);
         fillRange(from, currentMonth);
+    }
+
+    /**
+     * Rebuilds the summaries for exactly the given months, regardless of how far in the past they
+     * are. Used after {@code matchBillSystemIdsFromRemote} resolves bills outside the recent window
+     * that {@link #refreshRecentMonths()} covers.
+     */
+    @Transactional
+    public void refreshMonths(Set<LocalDate> months) {
+        if (months.isEmpty()) {
+            return;
+        }
+        Set<LocalDate> normalizedMonths = months.stream().map(m -> m.withDayOfMonth(1)).collect(Collectors.toSet());
+        log.info("Refreshing monthly summaries for {} month(s): {}", normalizedMonths.size(), normalizedMonths);
+        monthlySummaryRepository.deleteByMonthIn(normalizedMonths);
+        normalizedMonths.forEach(month -> monthlySummaryRepository.save(buildSummary(month)));
     }
 
     private void fillRange(LocalDate from, LocalDate currentMonth) {

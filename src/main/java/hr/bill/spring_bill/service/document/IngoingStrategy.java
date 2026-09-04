@@ -41,11 +41,13 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -309,13 +311,13 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     @Override
-    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+    public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
         List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
                 .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.DBIT)
                 .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getSenderIban()))
                 .toList();
         if (candidates.isEmpty()) {
-            return 0;
+            return RemoteMatchResult.empty();
         }
         DocumentListParams.DocumentListParamsBuilder window = DocumentListParams.builder();
         if (from != null) {
@@ -328,6 +330,7 @@ public class IngoingStrategy implements BillStrategy {
                 .filter(d -> d.status() != DocumentStatus.PlacenUPotpunosti)
                 .toList();
         int updated = 0;
+        Set<LocalDate> updatedMonths = new HashSet<>();
         for (BankTransactionEntity tx : candidates) {
             for (DocumentStatusResponse document : unpaid) {
                 if (HrPaymentReferenceService.referencesMatch(tx.getReference(), document.documentId())) {
@@ -340,13 +343,14 @@ public class IngoingStrategy implements BillStrategy {
                         repository.save(bill);
                     });
                     tx.setBillSystemId(String.valueOf(document.id()));
+                    updatedMonths.add(LocalDateTime.parse(document.issuedOn()).toLocalDate().withDayOfMonth(1));
                     updated++;
                     break;
                 }
             }
         }
         log.info("Resolved {} bank transaction(s) against upstream unpaid ingoing bills", updated);
-        return updated;
+        return new RemoteMatchResult(updated, updatedMonths);
     }
 
     private String expectedReference(BillEntity bill) {
