@@ -304,6 +304,41 @@ public class F1OutgoingStrategy implements BillStrategy {
         return updated;
     }
 
+    @Override
+    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
+                .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.CRDT)
+                .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban()))
+                .toList();
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+        // F1 receipts carry no payment status, so every receipt in the window is a match candidate.
+        List<ReceiptSummaryDto> receipts = f1WebClient.getReceiptsByDateRange(
+                from == null ? null : from.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME),
+                to == null ? null : to.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        int updated = 0;
+        for (BankTransactionEntity tx : candidates) {
+            for (ReceiptSummaryDto receipt : receipts) {
+                if (HrPaymentReferenceService.referencesMatch(tx.getReference(), receipt.formattedReceiptNumber())) {
+                    tx.setBillSystemId(String.valueOf(receipt.id()));
+                    markLocalBillPaid(receipt.id().longValue());
+                    updated++;
+                    break;
+                }
+            }
+        }
+        log.info("Resolved {} bank transaction(s) against upstream F1 receipts", updated);
+        return updated;
+    }
+
+    private void markLocalBillPaid(long systemId) {
+        repository.findBySystemIdAndBillType(systemId, BillType.F1_BILL).ifPresent(bill -> {
+            bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
+            repository.save(bill);
+        });
+    }
+
     private String expectedReference(BillEntity bill) {
         return bill.getPaymentReference() != null
                 ? bill.getPaymentReference()

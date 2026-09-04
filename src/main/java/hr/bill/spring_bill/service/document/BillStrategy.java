@@ -42,6 +42,19 @@ public interface BillStrategy extends DocumentStrategy {
      */
     int markPaidFromBankStatement(List<BankTransactionEntity> transactions);
 
+    /**
+     * Fallback for {@link #markPaidFromBankStatement(List)}: for the transactions that stayed
+     * unmatched against the local bill table, fetch this strategy's still-unpaid bills straight
+     * from the upstream system (issued within {@code [from, to]}) and, on a payment-reference
+     * match, set the transaction's {@code billSystemId} (marking the local bill paid too when it
+     * exists). Strategies without an upstream source do nothing.
+     *
+     * @return number of transactions newly assigned a {@code billSystemId}
+     */
+    default int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        return 0;
+    }
+
     default String billSystemId(BillEntity bill) {
         return bill.getSystemId() == null ? null : String.valueOf(bill.getSystemId());
     }

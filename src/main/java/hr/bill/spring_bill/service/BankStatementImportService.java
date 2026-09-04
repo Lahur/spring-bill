@@ -15,12 +15,14 @@ import hr.bill.spring_bill.service.document.BillStrategyFactory;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -50,6 +52,9 @@ public class BankStatementImportService {
     private final DocumentService documentService;
 
     private final MonthlySummaryScheduler monthlySummaryScheduler;
+
+    @Value("${bill.statement.remote-match-lookback-months}")
+    private int remoteMatchLookbackMonths;
 
     public List<BankStatementResponse> findAll() {
         log.debug("Fetching all bank statements");
@@ -144,10 +149,20 @@ public class BankStatementImportService {
         log.debug("Saved bank statement {} with {} transaction(s)", statement.getId(), transactions.size());
 
         int matched = billStrategyFactory.markPaidFromBankStatement(transactions);
-        if (matched > 0) {
+
+        List<BankTransactionEntity> unresolved = transactions.stream()
+                .filter(tx -> tx.getBillSystemId() == null)
+                .toList();
+        LocalDate matchFrom = statement.getPeriodFrom() == null
+                ? null
+                : statement.getPeriodFrom().minusMonths(remoteMatchLookbackMonths);
+        int remoteMatched = billStrategyFactory.matchBillSystemIdsFromRemote(unresolved, matchFrom, statement.getPeriodTo());
+
+        if (matched > 0 || remoteMatched > 0) {
             bankTransactionRepository.saveAll(transactions);
         }
-        log.info("Bank statement {} matched {} bill(s) as paid", statement.getId(), matched);
+        log.info("Bank statement {} matched {} bill(s) locally and resolved {} more transaction(s) from upstream",
+                statement.getId(), matched, remoteMatched);
 
         return bankStatementMapper.toBankStatementResponse(statement);
     }

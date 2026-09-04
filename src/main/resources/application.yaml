@@ -12,3 +12,5 @@ spring:
 bill:
   schedule:
     delete-on-startup: false
+  statement:
+    remote-match-lookback-months: 6

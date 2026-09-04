@@ -308,6 +308,47 @@ public class IngoingStrategy implements BillStrategy {
         return updated;
     }
 
+    @Override
+    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
+                .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.DBIT)
+                .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getSenderIban()))
+                .toList();
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+        DocumentListParams.DocumentListParamsBuilder window = DocumentListParams.builder();
+        if (from != null) {
+            window.issuedFrom(from.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        if (to != null) {
+            window.issuedTo(to.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        List<DocumentStatusResponse> unpaid = eposlovanjeClient.getIncomingDocuments(window.build()).stream()
+                .filter(d -> d.status() != DocumentStatus.PlacenUPotpunosti)
+                .toList();
+        int updated = 0;
+        for (BankTransactionEntity tx : candidates) {
+            for (DocumentStatusResponse document : unpaid) {
+                if (HrPaymentReferenceService.referencesMatch(tx.getReference(), document.documentId())) {
+                    eposlovanjeClient.changeDocumentStatus(document.id(), DocumentChangeStatusRequest.builder()
+                            .status(DocumentStatus.PlacenUPotpunosti.getValue())
+                            .changedOn(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")))
+                            .build());
+                    repository.findBySystemIdAndBillType(document.id(), BillType.INGOING_BILL).ifPresent(bill -> {
+                        bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
+                        repository.save(bill);
+                    });
+                    tx.setBillSystemId(String.valueOf(document.id()));
+                    updated++;
+                    break;
+                }
+            }
+        }
+        log.info("Resolved {} bank transaction(s) against upstream unpaid ingoing bills", updated);
+        return updated;
+    }
+
     private String expectedReference(BillEntity bill) {
         return bill.getPaymentReference() != null
                 ? bill.getPaymentReference()

@@ -14,6 +14,7 @@ import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillWithDetailsRequest;
 import hr.bill.spring_bill.dto.eposlovanje.enums.PaymentMeans;
 import hr.bill.spring_bill.dto.eposlovanje.enums.VatCategory;
+import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.common.DocumentStatus;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.request.DocumentSendRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.response.DocumentGetResponse;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.response.DocumentStatusResponse;
@@ -377,6 +378,47 @@ public class F2OutgoingStrategy implements BillStrategy {
         }
         log.info("Marked {} F2 outgoing bill(s) as paid from bank statement", updated);
         return updated;
+    }
+
+    @Override
+    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
+                .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.CRDT)
+                .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban()))
+                .toList();
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+        DocumentListParams.DocumentListParamsBuilder window = DocumentListParams.builder();
+        if (from != null) {
+            window.issuedFrom(from.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        if (to != null) {
+            window.issuedTo(to.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        List<DocumentStatusResponse> unpaid = eposlovanjeClient.getOutgoingDocuments(window.build()).stream()
+                .filter(d -> d.status() != DocumentStatus.PlacenUPotpunosti)
+                .toList();
+        int updated = 0;
+        for (BankTransactionEntity tx : candidates) {
+            for (DocumentStatusResponse document : unpaid) {
+                if (HrPaymentReferenceService.referencesMatch(tx.getReference(), document.documentId())) {
+                    tx.setBillSystemId(String.valueOf(document.id()));
+                    markLocalBillPaid(document.id());
+                    updated++;
+                    break;
+                }
+            }
+        }
+        log.info("Resolved {} bank transaction(s) against upstream unpaid F2 outgoing bills", updated);
+        return updated;
+    }
+
+    private void markLocalBillPaid(Long systemId) {
+        repository.findBySystemIdAndBillType(systemId, BillType.F2_BILL).ifPresent(bill -> {
+            bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
+            repository.save(bill);
+        });
     }
 
     private String expectedReference(BillEntity bill) {

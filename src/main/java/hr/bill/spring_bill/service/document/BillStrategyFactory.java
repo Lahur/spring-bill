@@ -5,6 +5,7 @@ import hr.bill.spring_bill.model.BankTransactionEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,18 @@ public class BillStrategyFactory extends DocumentStrategyFactory {
                 .mapToInt(strategy -> strategy.markPaidFromBankStatement(transactions))
                 .sum();
         log.debug("Matched {} bill(s) as paid across all strategies", matched);
+        return matched;
+    }
+
+    public int matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        if (unresolvedTransactions.isEmpty()) {
+            return 0;
+        }
+        log.debug("Resolving {} unmatched bank transaction(s) against upstream unpaid bills", unresolvedTransactions.size());
+        int matched = billStrategies.values().stream()
+                .mapToInt(strategy -> strategy.matchBillSystemIdsFromRemote(unresolvedTransactions, from, to))
+                .sum();
+        log.debug("Resolved {} bank transaction(s) from upstream unpaid bills", matched);
         return matched;
     }
 }
