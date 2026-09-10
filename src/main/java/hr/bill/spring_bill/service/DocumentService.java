@@ -1,6 +1,7 @@
 package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.clients.mail_bill.MailBillClient;
+import hr.bill.spring_bill.dto.mail_bill.request.MailFile;
 import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
 import hr.bill.spring_bill.dto.web.SendBillReportItem;
 import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
@@ -30,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
@@ -64,7 +66,27 @@ public class DocumentService {
         }
         renderDocuments(sendBillReportsRequest.reports(), pdfsDir);
 
-        String fileContent;
+        String title = LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        List<MailFile> files = sendBillReportsRequest.separated()
+                ? individualFiles(pdfsDir, title)
+                : List.of(mergedFile(pdfsDir, title));
+        SendMailRequest sendMailRequest = SendMailRequest.builder()
+                .subject(title)
+                .recipientEmail(sendBillReportsRequest.email())
+                .files(files)
+                .build();
+        mailBillClient.sendMail(sendMailRequest);
+        recipientService.save(sendBillReportsRequest.email());
+        log.info("Sent {} {} document attachment(s) to {}",
+                files.size(), sendBillReportsRequest.separated() ? "individual" : "merged", sendBillReportsRequest.email());
+
+        for (SendBillReportItem item : sendBillReportsRequest.reports()) {
+            documentStrategyFactory.incrementSentCount(item.type(), item.id());
+        }
+    }
+
+    // Merge every rendered PDF into one A4-normalized document.
+    private MailFile mergedFile(Path pdfsDir, String title) {
         try (var pdfFiles = Files.list(pdfsDir)) {
             PDFMergerUtility merger = new PDFMergerUtility();
             ByteArrayOutputStream mergedOutput = new ByteArrayOutputStream();
@@ -73,23 +95,31 @@ public class DocumentService {
                 merger.addSource(pdfFile.toFile());
             }
             merger.mergeDocuments(IOUtils.createMemoryOnlyStreamCache());
-            fileContent = Base64.getEncoder().encodeToString(normalizeToA4(mergedOutput.toByteArray()));
+            return MailFile.builder()
+                    .fileName(title)
+                    .fileContent(Base64.getEncoder().encodeToString(normalizeToA4(mergedOutput.toByteArray())))
+                    .build();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        String title = LocalDateTime.now(CroatianTimeZone.ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        SendMailRequest sendMailRequest = SendMailRequest.builder()
-                .fileName(title)
-                .subject(title)
-                .recipientEmail(sendBillReportsRequest.email())
-                .fileContent(fileContent)
-                .build();
-        mailBillClient.sendMail(sendMailRequest);
-        recipientService.save(sendBillReportsRequest.email());
-        log.info("Sent merged document mail to {}", sendBillReportsRequest.email());
+    }
 
-        for (SendBillReportItem item : sendBillReportsRequest.reports()) {
-            documentStrategyFactory.incrementSentCount(item.type(), item.id());
+    // Attach every rendered PDF individually (A4-normalized) to a single mail,
+    // named "<title>-<n>-<total>" (e.g. 2026-09-10-2-3).
+    private List<MailFile> individualFiles(Path pdfsDir, String title) {
+        try (var pdfFiles = Files.list(pdfsDir)) {
+            List<Path> sorted = pdfFiles.sorted().toList();
+            List<MailFile> files = new ArrayList<>();
+            for (int i = 0; i < sorted.size(); i++) {
+                byte[] normalized = normalizeToA4(Files.readAllBytes(sorted.get(i)));
+                files.add(MailFile.builder()
+                        .fileName(String.format("%s-%d-%d", title, i + 1, sorted.size()))
+                        .fileContent(Base64.getEncoder().encodeToString(normalized))
+                        .build());
+            }
+            return files;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

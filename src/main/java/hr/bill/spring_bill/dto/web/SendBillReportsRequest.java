@@ -19,5 +19,16 @@ public record SendBillReportsRequest(
 
         @Schema(description = "Recipient email address", example = "buyer@example.com")
         @NotNull(message = "Email can't be null")
-        String email
-) {}
+        String email,
+
+        @Schema(description = "Whether the generated PDFs should be attached individually to the same email. "
+                + "When false (default), they are merged into a single document.",
+                defaultValue = "false")
+        Boolean separated
+) {
+    public SendBillReportsRequest {
+        if (separated == null) {
+            separated = false;
+        }
+    }
+}
