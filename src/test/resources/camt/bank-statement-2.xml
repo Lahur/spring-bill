@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08 ./camt.053.001.08.xsd">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>BCS999999999992026060216415</MsgId>
+      <CreDtTm>2026-06-02T04:27:38.844</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>207656679</Id>
+      <LglSeqNb>69</LglSeqNb>
+      <CreDtTm>2026-06-02T04:27:38.845</CreDtTm>
+      <FrToDt>
+        <FrDtTm>2026-06-01T00:00:00.000</FrDtTm>
+        <ToDtTm>2026-06-01T23:59:59.999</ToDtTm>
+      </FrToDt>
+      <RptgSrc>
+        <Prtry>ZABAHR2XXXX92963223473</Prtry>
+      </RptgSrc>
+      <Acct>
+        <Id>
+          <IBAN>HR8823600001109999001</IBAN>
+        </Id>
+        <Ccy>EUR</Ccy>
+        <Nm>redovan račun vrste 11</Nm>
+        <Ownr>
+          <Nm>PRIMJER OBRT D.O.O.</Nm>
+          <PstlAdr>
+            <AdrLine>ZAGREB</AdrLine>
+            <AdrLine>PRIMJER ULICA 1</AdrLine>
+          </PstlAdr>
+          <Id>
+            <OrgId>
+              <Othr>
+                <Id>99999999999</Id>
+              </Othr>
+            </OrgId>
+          </Id>
+        </Ownr>
+      </Acct>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>OPBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">46750.97</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-06-01</Dt>
+        </Dt>
+      </Bal>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>CLBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">46950.97</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-06-01</Dt>
+        </Dt>
+      </Bal>
+      <TxsSummry>
+        <TtlCdtNtries>
+          <NbOfNtries>1</NbOfNtries>
+          <Sum>200.00</Sum>
+        </TtlCdtNtries>
+        <TtlDbtNtries>
+          <NbOfNtries>0</NbOfNtries>
+          <Sum>0.00</Sum>
+        </TtlDbtNtries>
+      </TxsSummry>
+      <Ntry>
+        <Amt Ccy="EUR">200.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <RvslInd>false</RvslInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <DtTm>2026-06-01T08:48:40.177</DtTm>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-06-01</Dt>
+        </ValDt>
+        <AcctSvcrRef>0129682210002039   1701</AcctSvcrRef>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>DMCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <MsgId>2360000260601002001C1351008</MsgId>
+              <AcctSvcrRef>N020261520008272</AcctSvcrRef>
+              <InstrId>2360000260601002001C135100802039B3</InstrId>
+              <EndToEndId>HR0512345-123-000123456789</EndToEndId>
+            </Refs>
+            <AmtDtls>
+              <TxAmt>
+                <Amt Ccy="EUR">200.00</Amt>
+              </TxAmt>
+            </AmtDtls>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>IVANA PRIMJER</Nm>
+                  <PstlAdr>
+                    <StrtNm>PRIMJER ULICA</StrtNm>
+                    <BldgNb>5</BldgNb>
+                    <TwnNm>PRIMJER MJESTO</TwnNm>
+                    <Ctry>HR</Ctry>
+                  </PstlAdr>
+                </Pty>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>HR3423400091100088002</IBAN>
+                </Id>
+              </DbtrAcct>
+              <UltmtDbtr>
+                <Pty>
+                  <Nm>Ivan Primjer</Nm>
+                </Pty>
+              </UltmtDbtr>
+            </RltdPties>
+            <RmtInf>
+              <Strd>
+                <CdtrRefInf>
+                  <Tp>
+                    <CdOrPrtry>
+                      <Cd>SCOR</Cd>
+                    </CdOrPrtry>
+                  </Tp>
+                  <Ref>HR005</Ref>
+                </CdtrRefInf>
+                <AddtlRmtInf>Racun 5/1/2</AddtlRmtInf>
+              </Strd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

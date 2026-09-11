@@ -34,24 +34,9 @@ public interface BillStrategy extends DocumentStrategy {
 
     void deleteAll();
 
-    /**
-     * Matches persisted bank transactions against this strategy's bills. Matched bills are marked
-     * paid and the matched transaction's {@code billSystemId} is set to the bill's system id.
-     *
-     * @return number of bills marked as paid
-     */
     int markPaidFromBankStatement(List<BankTransactionEntity> transactions);
 
-    /**
-     * Fallback for {@link #markPaidFromBankStatement(List)}: for the transactions that stayed
-     * unmatched against the local bill table, fetch this strategy's still-unpaid bills straight
-     * from the upstream system (issued within {@code [from, to]}) and, on a payment-reference
-     * match, set the transaction's {@code billSystemId} (marking the local bill paid too when it
-     * exists). Strategies without an upstream source do nothing.
-     *
-     * @return number of transactions newly assigned a {@code billSystemId}, together with the
-     * first-of-month dates of every matched bill so callers can refresh those months' summaries
-     */
+
     default RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
         return RemoteMatchResult.empty();
     }

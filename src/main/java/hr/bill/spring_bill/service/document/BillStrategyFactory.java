@@ -19,7 +19,7 @@ public class BillStrategyFactory extends DocumentStrategyFactory {
     private final Map<BillReportType, BillStrategy> billStrategies;
 
     public BillStrategyFactory(List<BillStrategy> strategies) {
-        super(new ArrayList<DocumentStrategy>(strategies));
+        super(new ArrayList<>(strategies));
         this.billStrategies = strategies.stream()
                 .collect(Collectors.toMap(BillStrategy::getType, Function.identity()));
     }

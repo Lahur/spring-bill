@@ -1,0 +1,217 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08 ./camt.053.001.08.xsd">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>BCS999999999992026060314648</MsgId>
+      <CreDtTm>2026-06-03T04:19:20.752</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>207697552</Id>
+      <LglSeqNb>70</LglSeqNb>
+      <CreDtTm>2026-06-03T04:19:20.756</CreDtTm>
+      <FrToDt>
+        <FrDtTm>2026-06-02T00:00:00.000</FrDtTm>
+        <ToDtTm>2026-06-02T23:59:59.999</ToDtTm>
+      </FrToDt>
+      <RptgSrc>
+        <Prtry>ZABAHR2XXXX92963223473</Prtry>
+      </RptgSrc>
+      <Acct>
+        <Id>
+          <IBAN>HR8823600001109999001</IBAN>
+        </Id>
+        <Ccy>EUR</Ccy>
+        <Nm>redovan račun vrste 11</Nm>
+        <Ownr>
+          <Nm>PRIMJER OBRT D.O.O.</Nm>
+          <PstlAdr>
+            <AdrLine>ZAGREB</AdrLine>
+            <AdrLine>PRIMJER ULICA 1</AdrLine>
+          </PstlAdr>
+          <Id>
+            <OrgId>
+              <Othr>
+                <Id>99999999999</Id>
+              </Othr>
+            </OrgId>
+          </Id>
+        </Ownr>
+      </Acct>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>OPBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">46950.97</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-06-02</Dt>
+        </Dt>
+      </Bal>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>CLBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">54300.97</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-06-02</Dt>
+        </Dt>
+      </Bal>
+      <TxsSummry>
+        <TtlCdtNtries>
+          <NbOfNtries>2</NbOfNtries>
+          <Sum>7350.00</Sum>
+        </TtlCdtNtries>
+        <TtlDbtNtries>
+          <NbOfNtries>0</NbOfNtries>
+          <Sum>0.00</Sum>
+        </TtlDbtNtries>
+      </TxsSummry>
+      <Ntry>
+        <Amt Ccy="EUR">4350.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <RvslInd>false</RvslInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <DtTm>2026-06-02T11:24:49.929</DtTm>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-06-02</Dt>
+        </ValDt>
+        <AcctSvcrRef>0129684530002478   1701</AcctSvcrRef>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>DMCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <MsgId>2360000260602035001C2351008</MsgId>
+              <AcctSvcrRef>N020261530088815</AcctSvcrRef>
+              <InstrId>2360000260602035001C235100802478B3</InstrId>
+              <EndToEndId>HR00134003-001325</EndToEndId>
+            </Refs>
+            <AmtDtls>
+              <TxAmt>
+                <Amt Ccy="EUR">4350.00</Amt>
+              </TxAmt>
+            </AmtDtls>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>PRIMJER GRADNJA D.D.</Nm>
+                  <PstlAdr>
+                    <StrtNm>Poslovna zona</StrtNm>
+                    <BldgNb>1/A</BldgNb>
+                    <PstCd>47250</PstCd>
+                    <TwnNm>PRIMJEROVO</TwnNm>
+                    <CtrySubDvsn>PRIMJERSKA</CtrySubDvsn>
+                    <Ctry>HR</Ctry>
+                  </PstlAdr>
+                </Pty>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>HR1223400091100077003</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Strd>
+                <CdtrRefInf>
+                  <Tp>
+                    <CdOrPrtry>
+                      <Cd>SCOR</Cd>
+                    </CdOrPrtry>
+                  </Tp>
+                  <Ref>HR0053-1-1</Ref>
+                </CdtrRefInf>
+                <AddtlRmtInf>Plaćanje računa dobavljaču</AddtlRmtInf>
+              </Strd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">3000.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <RvslInd>false</RvslInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <DtTm>2026-06-02T16:15:38.820</DtTm>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-06-02</Dt>
+        </ValDt>
+        <AcctSvcrRef>0129685080001979   1701</AcctSvcrRef>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>DMCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <MsgId>2360000260602068001C4351008</MsgId>
+              <AcctSvcrRef>N020261530167330</AcctSvcrRef>
+              <InstrId>2360000260602068001C435100801979B3</InstrId>
+              <EndToEndId>HR001017810-260000479</EndToEndId>
+            </Refs>
+            <AmtDtls>
+              <TxAmt>
+                <Amt Ccy="EUR">3000.00</Amt>
+              </TxAmt>
+            </AmtDtls>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>GRAD PRIMJEROVO</Nm>
+                  <PstlAdr>
+                    <Ctry>HR</Ctry>
+                    <AdrLine>Trg primjera 1</AdrLine>
+                    <AdrLine>PRIMJEROVO</AdrLine>
+                  </PstlAdr>
+                </Pty>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>HR6024000081800099004</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Strd>
+                <CdtrRefInf>
+                  <Tp>
+                    <CdOrPrtry>
+                      <Cd>SCOR</Cd>
+                    </CdOrPrtry>
+                  </Tp>
+                  <Ref>HR0052-1-1</Ref>
+                </CdtrRefInf>
+                <AddtlRmtInf>Plaćanje po ugovoru</AddtlRmtInf>
+              </Strd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

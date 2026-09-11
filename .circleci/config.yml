@@ -14,6 +14,32 @@
 version: 2.1
 
 jobs:
+  test:
+    machine:
+      image: ubuntu-2404:current
+    steps:
+      - checkout
+      - run:
+          # Ubuntu 24.04's apt repos don't carry JDK 25 yet, so pull Temurin directly - matches
+          # the JavaLanguageVersion.of(25) toolchain in build.gradle.kts.
+          name: Install JDK 25
+          command: |
+            curl -sL "https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jdk/hotspot/normal/eclipse" -o /tmp/jdk25.tar.gz
+            sudo mkdir -p /usr/lib/jvm
+            sudo tar -xzf /tmp/jdk25.tar.gz -C /usr/lib/jvm
+            echo "export JAVA_HOME=$(find /usr/lib/jvm -maxdepth 1 -iname 'jdk-25*')" >> "$BASH_ENV"
+            echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "$BASH_ENV"
+      - run:
+          name: Login to CFCR
+          command: |
+            echo $CF_TOKEN_SECRET | docker login $CF_ORG_ID.$CFCR_REGION.registry.cloudfleet.dev \
+              --username $CF_TOKEN_ID --password-stdin
+      - run:
+          name: Run tests
+          command: ./gradlew test --no-daemon
+      - store_test_results:
+          path: build/test-results/test
+
   build-and-push:
     docker:
       - image: cimg/base:current
@@ -81,7 +107,10 @@ jobs:
 workflows:
   build-deploy:
     jobs:
-      - build-and-push
+      - test
+      - build-and-push:
+          requires:
+            - test
       - deploy:
           requires:
             - build-and-push
