@@ -21,13 +21,22 @@ bill:
     monthly-summary-cron: "0 0 2 1 * *"
     sync-lookback-weeks: 156
   supplier:
-    oib: "99999999999"
+    # Must be the real OIB the eposlovanje-mock sandbox account is registered under: on every UBL
+    # invoice send, Eposlovanje checks this against the sender identity tied to the mock's baked-in
+    # API key ("OIB pošiljatelja dokumenta (...) mora odgovarati
+    # Invoice/AccountingSupplierParty/Party/EndpointID elementu (...)") — a placeholder OIB, even a
+    # checksum-valid one, gets rejected with a 400.
+    oib: "31728187872"
     name: "Test Supplier d.o.o."
     street: "Test Street 1"
     city: "Zagreb"
     postal-zone: "10000"
     country-code: "HR"
-    contact-oib: "99999999999"
+    # Just needs to be a valid OIB for the contact/operator field on receipts and UBL sellerContact
+    # (F1OutgoingStrategy/F2OutgoingStrategy/F2ReportStrategy) — unlike bill.supplier.oib above,
+    # this isn't checked against the sandbox account's registered identity, so it's deliberately
+    # different here to reflect that it represents a distinct person, not the company itself.
+    contact-oib: "73660371074"
     contact-name: "Test Contact"
     phone: "+385000000000"
     email: "test-supplier@example.com"

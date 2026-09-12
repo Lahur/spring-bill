@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "bill-pdf",
-        url = "${bill.hub-url}"
+        url = "${bill.hub-url}",
+        configuration = BillPdfClientConfig.class
 )
 public interface BillPdfClient {
 

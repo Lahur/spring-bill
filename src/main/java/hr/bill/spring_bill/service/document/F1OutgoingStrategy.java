@@ -42,6 +42,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
@@ -174,7 +175,12 @@ public class F1OutgoingStrategy implements BillStrategy {
                     .receiptType(ReceiptType.Standard)
                     .operatorOib(supplierProperties.contactOib())
                     .notes(f1BillRequest.getNote() == null || f1BillRequest.getNote().isBlank() ? null : f1BillRequest.getNote())
-                    .paymentDueDate(f1BillRequest.getDueDate().toString())
+                    // F1.Web's CreateReceiptDto.paymentDueDate is format: date-time (confirmed
+                    // against the real API spec), and ReceiptDto.paymentDueDate on the way back
+                    // out is parsed as a full LocalDateTime (BillInfoMapper, ReceiptBillRequestMapper)
+                    // — a bare LocalDate string here broke both of those.
+                    .paymentDueDate(LocalDateTime.of(f1BillRequest.getDueDate(), LocalTime.MIDNIGHT)
+                            .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .buyerName(f1BillRequest.getBuyerName())
                     .buyerOib(f1BillRequest.getBuyerOib())
                     .buyerAddress(f1BillRequest.getBuyerAddress())
