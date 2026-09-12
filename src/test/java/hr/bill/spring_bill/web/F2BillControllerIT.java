@@ -5,6 +5,7 @@ import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
+import hr.bill.spring_bill.service.CroatianTimeZone;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -70,7 +71,7 @@ class F2BillControllerIT extends AbstractIntegrationTest {
         BillResponse created = createBill();
 
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("dateFrom", LocalDate.now().minusDays(1).toString());
+        params.put("dateFrom", LocalDate.now(CroatianTimeZone.ZONE).minusDays(1).toString());
 
         BillResponse[] filtered = objectMapper.readValue(mockMvc.perform(post("/bill/f2/filter")
                         .contentType(APPLICATION_JSON)
@@ -136,9 +137,9 @@ class F2BillControllerIT extends AbstractIntegrationTest {
         request.put("billId", billId);
         request.put("profile", "P1");
         request.put("vatCategory", "Pdv25");
-        request.put("billDate", LocalDate.now().toString());
+        request.put("billDate", LocalDate.now(CroatianTimeZone.ZONE).toString());
         request.put("billTime", "11:00:00");
-        request.put("dueDate", LocalDate.now().plusDays(15).toString());
+        request.put("dueDate", LocalDate.now(CroatianTimeZone.ZONE).plusDays(15).toString());
         request.put("buyerOib", BUYER_OIB);
         request.put("baseAmount", "100.00");
         request.put("billItemName", "Test item");
