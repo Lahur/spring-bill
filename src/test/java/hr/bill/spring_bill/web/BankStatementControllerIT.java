@@ -7,41 +7,29 @@ import hr.bill.spring_bill.dao.BankStatementRepository;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
 import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
 import hr.bill.spring_bill.dao.PosTransactionRepository;
-import hr.bill.spring_bill.dto.mail_bill.response.SendMailResponse;
 import hr.bill.spring_bill.dto.web.BankStatementResponse;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/** Both {@link BillPdfClient} and {@link MailBillClient} are pointed at real containers from
+ * {@link AbstractIntegrationTest} (the {@code hub-bill} PDF renderer and the Mailhog-backed
+ * {@code mail-bill-test} image) rather than stubbed. */
 class BankStatementControllerIT extends AbstractIntegrationTest {
 
-    @MockitoBean
-    private BillPdfClient billPdfClient;
-
-    @MockitoBean
-    private MailBillClient mailBillClient;
+    private static final String RECIPIENT_EMAIL = "finance@example.com";
 
     @Autowired
     private BankStatementRepository bankStatementRepository;
@@ -54,20 +42,6 @@ class BankStatementControllerIT extends AbstractIntegrationTest {
 
     @Autowired
     private CashWithdrawalBalanceRepository cashWithdrawalBalanceRepository;
-
-    private static byte[] pdfBytes;
-
-    @BeforeAll
-    static void renderPdf() {
-        try (PDDocument doc = new PDDocument()) {
-            doc.addPage(new PDPage(PDRectangle.A4));
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            doc.save(out);
-            pdfBytes = out.toByteArray();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
     @Test
     void uploadingAStatementPersistsItAndReturnsIt() throws Exception {
@@ -125,18 +99,16 @@ class BankStatementControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void uploadingWithAnEmailRendersAndSendsThePdfThroughTheMockedClients() throws Exception {
-        when(billPdfClient.renderBankStatement(any())).thenReturn(pdfBytes);
-        when(mailBillClient.sendMail(any())).thenReturn(new SendMailResponse("mail-id-207656679"));
+    void uploadingWithAnEmailRendersAndSendsTheGeneratedPdf() throws Exception {
+        long mailCountBefore = mailhogMessagesTo(RECIPIENT_EMAIL);
 
         mockMvc.perform(multipart("/bank-statement/upload")
                         .file(statementFilePart("bank-statement-2.xml"))
-                        .param("email", "finance@example.com")
+                        .param("email", RECIPIENT_EMAIL)
                         .with(jwt()))
                 .andExpect(status().isOk());
 
-        verify(billPdfClient, times(1)).renderBankStatement(any());
-        verify(mailBillClient, times(1)).sendMail(any());
+        assertThat(mailhogMessagesTo(RECIPIENT_EMAIL)).isEqualTo(mailCountBefore + 1);
     }
 
     @Test

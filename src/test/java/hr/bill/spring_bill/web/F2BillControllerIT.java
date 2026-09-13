@@ -6,10 +6,8 @@ import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.service.CroatianTimeZone;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -18,8 +16,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -31,18 +27,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * published there (26187994862, confirmed via a direct AMS check call). Every {@code createBill}/
  * {@code cancel} here sends a real UBL invoice to the sandbox — safe there, per the client.
  * {@code createBill} also renders and embeds a PDF copy of the invoice via {@link BillPdfClient},
- * which — same as every other IT class — is stubbed rather than pointed at a real PDF renderer. */
+ * which — same as every other IT class — is pointed at the real (DB-less) {@code hub-bill}
+ * container from {@link AbstractIntegrationTest}, not stubbed. */
 class F2BillControllerIT extends AbstractIntegrationTest {
 
     private static final String BUYER_OIB = "26187994862";
-
-    @MockitoBean
-    private BillPdfClient billPdfClient;
-
-    @BeforeEach
-    void stubPdfRendering() {
-        when(billPdfClient.renderBill(any())).thenReturn("%PDF-1.4".getBytes());
-    }
 
     // Eposlovanje matches a created document by "{billId}/1/1" among today's outgoing documents,
     // so every bill created in this run needs its own never-before-used billId.

@@ -6,10 +6,8 @@ import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -18,8 +16,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -31,21 +27,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * buyerName/buyerStreet/buyerCity/buyerPostalZone, no Eposlovanje lookup), and {@code getBills}/
  * {@code getBillsFilter}/{@code getBillInfo}/{@code review} are all purely local — only
  * {@code createBill} (via {@code eposlovanjeClient.reportDocument}) and {@code cancel} touch the
- * sandbox. {@code createBill} still renders and embeds a PDF via {@link BillPdfClient}, stubbed as
- * everywhere else. */
+ * sandbox. {@code createBill} still renders and embeds a PDF via {@link BillPdfClient}, pointed at
+ * the real (DB-less) {@code hub-bill} container from {@link AbstractIntegrationTest} as everywhere
+ * else. */
 class F2ReportBillControllerIT extends AbstractIntegrationTest {
 
     // Eposlovanje matches a created document by "{billId}/1/1" among today's outgoing documents
     // when cancelling, so every bill created in this run needs its own never-before-used billId.
     private static final AtomicInteger NEXT_BILL_ID = new AtomicInteger((int) (System.currentTimeMillis() % 1_000_000) + 1);
-
-    @MockitoBean
-    private BillPdfClient billPdfClient;
-
-    @BeforeEach
-    void stubPdfRendering() {
-        when(billPdfClient.renderBill(any())).thenReturn("%PDF-1.4".getBytes());
-    }
 
     @Test
     void createsListsAndFetchesABill() throws Exception {

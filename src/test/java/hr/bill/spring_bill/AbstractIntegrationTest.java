@@ -26,7 +26,14 @@ import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.BillMaintenanceScheduler;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.util.UUID;
 
 /**
@@ -41,6 +48,16 @@ import java.util.UUID;
  *     pointed at it — its {@code /eposlovanje} and {@code /pondi} routes proxy straight through to
  *     Eposlovanje's test/sandbox environment with baked-in credentials; {@code /f1-web} is a real
  *     in-memory fake, not proxied;</li>
+ *     <li>the real {@code hub-bill} image (no Postgres of its own — {@code DB_HOST} is left unset,
+ *     which also skips its Flyway migrations), with {@code bill.hub-url} pointed at it, so
+ *     {@link hr.bill.spring_bill.clients.bill_pdf.BillPdfClient} renders real PDFs instead of being
+ *     stubbed; {@code bill.hub-tenant-id} is blank in {@code application-test.yaml} for the same
+ *     reason (see {@link hr.bill.spring_bill.clients.bill_pdf.BillPdfClientConfig});</li>
+ *     <li>the {@code mail-bill-test} image (bundles Mailhog in the same container in place of the
+ *     real Resend-backed build, see its {@code Dockerfile.test}), with {@code bill.mail-bill.base-url}
+ *     pointed at its app port, so {@link hr.bill.spring_bill.clients.mail_bill.MailBillClient} sends
+ *     real mail instead of being stubbed; {@link #mailhogMessagesTo(String)} queries its bundled
+ *     Mailhog's REST API (a separate exposed port) to assert on what actually got sent;</li>
  *     <li>the {@code test} profile, so {@code bill.*} config comes from
  *     {@code src/test/resources/application-test.yaml} instead of Vault;</li>
  *     <li>{@link MockMvc}, wired through the real {@code SecurityFilterChain} — requests need
@@ -67,19 +84,52 @@ public abstract class AbstractIntegrationTest {
     private static final DockerImageName EPOSLOVANJE_MOCK_IMAGE = DockerImageName.parse(
             "88a3be32-7c1b-485a-9715-09f7f654160a.europe.registry.cloudfleet.dev/eposlovanje-mock:latest");
 
+    private static final DockerImageName HUB_BILL_IMAGE = DockerImageName.parse(
+            "88a3be32-7c1b-485a-9715-09f7f654160a.europe.registry.cloudfleet.dev/hub-bill:latest");
+
+    private static final DockerImageName MAIL_BILL_IMAGE = DockerImageName.parse(
+            "88a3be32-7c1b-485a-9715-09f7f654160a.europe.registry.cloudfleet.dev/mail-bill-test:latest-test");
+
+    private static final int MAIL_BILL_APP_PORT = 8081;
+
+    private static final int MAILHOG_API_PORT = 8025;
+
     @ServiceConnection
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18.4");
 
     static final GenericContainer<?> eposlovanjeMock = new GenericContainer<>(EPOSLOVANJE_MOCK_IMAGE)
             .withExposedPorts(8082);
 
+    // No DB_HOST set: hub-bill starts with only its ReportsModule/MetricsModule (no TenantsModule,
+    // no Flyway), which is enough to render every report type as long as no x-tenant-id header is
+    // sent (see bill.hub-tenant-id in application-test.yaml).
+    static final GenericContainer<?> hubBill = new GenericContainer<>(HUB_BILL_IMAGE)
+            .withExposedPorts(3000);
+
+    static final GenericContainer<?> mailBill = new GenericContainer<>(MAIL_BILL_IMAGE)
+            .withExposedPorts(MAIL_BILL_APP_PORT, MAILHOG_API_PORT);
+
     static {
         postgres.start();
         eposlovanjeMock.start();
+        hubBill.start();
+        mailBill.start();
     }
 
     protected static String eposlovanjeMockBaseUrl() {
         return "http://" + eposlovanjeMock.getHost() + ":" + eposlovanjeMock.getMappedPort(8082);
+    }
+
+    protected static String hubBillBaseUrl() {
+        return "http://" + hubBill.getHost() + ":" + hubBill.getMappedPort(3000);
+    }
+
+    protected static String mailBillBaseUrl() {
+        return "http://" + mailBill.getHost() + ":" + mailBill.getMappedPort(MAIL_BILL_APP_PORT);
+    }
+
+    private static String mailhogApiBaseUrl() {
+        return "http://" + mailBill.getHost() + ":" + mailBill.getMappedPort(MAILHOG_API_PORT);
     }
 
     @DynamicPropertySource
@@ -87,6 +137,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("bill.eposlovanje.base-url", () -> eposlovanjeMockBaseUrl() + "/eposlovanje");
         registry.add("bill.pondi.base-url", () -> eposlovanjeMockBaseUrl() + "/pondi");
         registry.add("bill.f1-web.base-url", () -> eposlovanjeMockBaseUrl() + "/f1-web");
+        registry.add("bill.hub-url", AbstractIntegrationTest::hubBillBaseUrl);
+        registry.add("bill.mail-bill.base-url", AbstractIntegrationTest::mailBillBaseUrl);
     }
 
     @MockitoBean
@@ -115,6 +167,21 @@ public abstract class AbstractIntegrationTest {
      * {@code SecurityConfig} requires authentication for anything but swagger/actuator. */
     protected static RequestPostProcessor jwt() {
         return SecurityMockMvcRequestPostProcessors.jwt();
+    }
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+
+    /** Counts messages the bundled Mailhog instance has received for {@code recipientEmail}, via
+     * its {@code /api/v2/search?kind=to} REST API — for asserting real mail was actually sent by
+     * {@link hr.bill.spring_bill.clients.mail_bill.MailBillClient}, instead of verifying a mock.
+     * Mailhog is shared (and never cleared) across every test method/class in this run, so callers
+     * comparing before/after counts must do so around the exact action under test. */
+    protected long mailhogMessagesTo(String recipientEmail) throws IOException, InterruptedException {
+        String url = mailhogApiBaseUrl() + "/api/v2/search?kind=to&query="
+                + URLEncoder.encode(recipientEmail, StandardCharsets.UTF_8);
+        HttpResponse<String> response = HTTP_CLIENT.send(
+                HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofString());
+        return objectMapper.readTree(response.body()).get("total").asLong();
     }
 
     /** Seeds a minimal bank_statement + bank_transaction row directly (bypassing the whole

@@ -1,11 +1,11 @@
 # Test-only values for the "test" profile, so integration tests don't depend on the local Vault
 # dev server. Mirrors the property names Vault normally supplies (see vault/entrypoint.sh and
-# application-dev.yaml). The bill.eposlovanje/pondi/f1-web base-urls below are overridden at
-# runtime by BankStatementImportServiceIT's @DynamicPropertySource to point at the
-# eposlovanje-mock container; the api-keys are unused by the mock (it injects its own real ones)
-# but are required here because they're read via strict @Value(...) with no default — same for
-# bill.path.* and every bill.schedule.* cron below (@Scheduled(cron = "${...}") also resolves
-# strictly), even though this test never triggers them.
+# application-dev.yaml). The bill.eposlovanje/pondi/f1-web/hub/mail-bill base-urls below are
+# overridden at runtime by AbstractIntegrationTest's @DynamicPropertySource to point at the
+# eposlovanje-mock/hub-bill/mail-bill-test containers; the api-keys are unused by the mock (it
+# injects its own real ones) but are required here because they're read via strict @Value(...)
+# with no default — same for bill.path.* and every bill.schedule.* cron below (@Scheduled(cron =
+# "${...}") also resolves strictly), even though this test never triggers them.
 spring:
   cloud:
     vault:
@@ -44,6 +44,10 @@ bill:
     # BankStatementImportServiceIT's fixture entries are recognized as remote-match candidates.
     iban: "HR8823600001109999001"
   hub-url: "http://localhost:9"
+  # hub-bill in AbstractIntegrationTest runs with no DB_HOST, so it has no tenant table to look up
+  # "tehnomodus" (or any tenant) against — a real x-tenant-id header 400s there (see
+  # BillPdfClientConfig). Blank disables the header, falling back to hub-bill's bundled templates.
+  hub-tenant-id: ""
   mail-bill:
     base-url: "http://localhost:9"
   eposlovanje:
