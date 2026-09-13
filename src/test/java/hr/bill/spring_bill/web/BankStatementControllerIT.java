@@ -7,9 +7,13 @@ import hr.bill.spring_bill.dao.BankStatementRepository;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
 import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
 import hr.bill.spring_bill.dao.PosTransactionRepository;
+import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.web.BankStatementResponse;
 import hr.bill.spring_bill.model.BankTransactionEntity;
+import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
+import hr.bill.spring_bill.model.enums.BillDocumentStatus;
+import hr.bill.spring_bill.model.enums.BillType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -17,6 +21,8 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,9 +30,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Both {@link BillPdfClient} and {@link MailBillClient} are pointed at real containers from
- * {@link AbstractIntegrationTest} (the {@code hub-bill} PDF renderer and the Mailhog-backed
- * {@code mail-bill-test} image) rather than stubbed. */
 class BankStatementControllerIT extends AbstractIntegrationTest {
 
     private static final String RECIPIENT_EMAIL = "finance@example.com";
@@ -43,11 +46,11 @@ class BankStatementControllerIT extends AbstractIntegrationTest {
     @Autowired
     private CashWithdrawalBalanceRepository cashWithdrawalBalanceRepository;
 
+    @Autowired
+    private BillRepository billRepository;
+
     @Test
     void uploadingAStatementPersistsItAndReturnsIt() throws Exception {
-        // bank-statement-1.xml: 6 entries, all plain domestic transfers (no POS/withdrawal codes
-        // in this client's data), so nothing lands in Pos/CashWithdrawal. The Postgres container
-        // (and its data) is shared across every test method in this class, so assert deltas.
         long posCountBefore = posTransactionRepository.count();
         long cashWithdrawalCountBefore = cashWithdrawalBalanceRepository.count();
 
@@ -78,6 +81,39 @@ class BankStatementControllerIT extends AbstractIntegrationTest {
 
         assertThat(posTransactionRepository.count()).isEqualTo(posCountBefore);
         assertThat(cashWithdrawalBalanceRepository.count()).isEqualTo(cashWithdrawalCountBefore);
+    }
+
+    @Test
+    void uploadingAStatementMarksAMatchingLocalBillAsPaid() throws Exception {
+        String paymentReference = "HR0050-1-1";
+        BillEntity bill = billRepository.save(BillEntity.builder()
+                .systemId(50011L)
+                .fullBillId("50/1/1")
+                .clientName("PRIMJER KOMUNALNI d.o.o.")
+                .billDate(LocalDateTime.now())
+                .totalAmount(new BigDecimal("1537.50"))
+                .documentStatus(BillDocumentStatus.NaSlanju)
+                .billType(BillType.F2_BILL)
+                .paymentReference(paymentReference)
+                .build());
+
+        BankStatementResponse[] uploaded = objectMapper.readValue(mockMvc.perform(multipart("/bank-statement/upload")
+                        .file(statementFilePart("bank-statement-4.xml"))
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray(), BankStatementResponse[].class);
+        assertThat(uploaded).hasSize(1);
+
+        List<BankTransactionEntity> transactions =
+                bankTransactionRepository.findAllByBankStatement_IdOrderByTransactionDateAsc(uploaded[0].id());
+        BankTransactionEntity matched = transactions.stream()
+                .filter(tx -> paymentReference.equals(tx.getReference()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(matched.getBillSystemId()).isEqualTo(String.valueOf(bill.getSystemId()));
+
+        assertThat(billRepository.findById(bill.getId()).orElseThrow().getDocumentStatus())
+                .isEqualTo(BillDocumentStatus.PlacenUPotpunosti);
     }
 
     @Test

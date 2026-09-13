@@ -24,7 +24,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Drives {@link AccountsStatementController} over HTTP. */
 class AccountsStatementControllerIT extends AbstractIntegrationTest {
 
     @Autowired
@@ -34,7 +33,7 @@ class AccountsStatementControllerIT extends AbstractIntegrationTest {
     void createsListsAndUploadsABillForAnAccountsStatement() throws Exception {
         String requestJson = objectMapper.writeValueAsString(Map.of(
                 "amount", "150.00",
-                "description", "ATM withdrawal " + UUID.randomUUID(),
+                "description", "store bill " + UUID.randomUUID(),
                 "date", LocalDate.now().toString()));
         MockMultipartFile requestPart = new MockMultipartFile("request", "", "application/json", requestJson.getBytes());
 
@@ -72,7 +71,7 @@ class AccountsStatementControllerIT extends AbstractIntegrationTest {
 
         String requestJson = objectMapper.writeValueAsString(Map.of(
                 "amount", "150.00",
-                "description", "ATM withdrawal " + UUID.randomUUID(),
+                "description", "store bill " + UUID.randomUUID(),
                 "date", LocalDate.now().toString()));
         MockMultipartFile requestPart = new MockMultipartFile("request", "", "application/json", requestJson.getBytes());
         AccountsStatementResponse created = objectMapper.readValue(mockMvc.perform(multipart("/accounts-statement")

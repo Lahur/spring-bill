@@ -2,16 +2,31 @@ package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
+import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
+import hr.bill.spring_bill.dto.web.bill.info.BillDocumentKind;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
+import hr.bill.spring_bill.dto.web.bill.info.BillItemInfo;
+import hr.bill.spring_bill.dto.web.bill.info.BillPaymentMethod;
+import hr.bill.spring_bill.dto.web.bill.info.BillVatRate;
+import hr.bill.spring_bill.dto.web.bill.info.BuyerInfo;
+import hr.bill.spring_bill.dto.web.bill.info.ItemUnitOfMeasure;
+import hr.bill.spring_bill.dto.web.bill.info.MainDataInfo;
+import hr.bill.spring_bill.dto.web.bill.info.PaymentInfo;
+import hr.bill.spring_bill.dto.web.bill.info.PriceInfo;
+import hr.bill.spring_bill.dto.web.bill.info.SupplierInfo;
+import hr.bill.spring_bill.model.enums.BillType;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -36,12 +51,35 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
     // when cancelling, so every bill created in this run needs its own never-before-used billId.
     private static final AtomicInteger NEXT_BILL_ID = new AtomicInteger((int) (System.currentTimeMillis() % 1_000_000) + 1);
 
+    @Autowired
+    private SupplierProperties supplierProperties;
+
     @Test
     void createsListsAndFetchesABill() throws Exception {
-        BillResponse created = createBill(NEXT_BILL_ID.getAndIncrement());
+        int billId = NEXT_BILL_ID.getAndIncrement();
+        Map<String, Object> requestBody = reportBillRequestBody(billId);
+        BillResponse created = createBill(billId);
 
-        assertThat(created.systemId()).isNotNull();
-        assertThat(created.fullBillId()).isNotNull();
+        // createBill's mapping (BillEntityMapper.toBillEntity(ReportBillRequest, BigDecimal, BillType))
+        // is entirely local — buyer details are self-declared, no upstream lookup — so every field but
+        // the DB-generated id is deterministic from the request itself.
+        BillResponse expected = BillResponse.builder()
+                .systemId((long) billId)
+                .fullBillId(billId + "/1/1")
+                .clientName((String) requestBody.get("buyerName"))
+                .clientOib((String) requestBody.get("buyerOib"))
+                .billDate(LocalDate.now().atTime(11, 0))
+                .totalAmount(new BigDecimal("125.00"))
+                .documentStatus(null)
+                .billType(BillType.F2_REPORT)
+                .sentCount(0)
+                .build();
+        assertThat(created)
+                .usingRecursiveComparison()
+                .ignoringFields("id")
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(expected);
+        assertThat(created.id()).isNotNull();
 
         BillResponse[] listed = objectMapper.readValue(mockMvc.perform(get("/bill/f2-report").with(jwt()))
                         .andExpect(status().isOk())
@@ -51,7 +89,59 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
         BillInfoResponse info = objectMapper.readValue(mockMvc.perform(get("/bill/f2-report/" + created.id()).with(jwt()))
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsByteArray(), BillInfoResponse.class);
-        assertThat(info.mainDataInfo()).isNotNull();
+        // getBillInfo is purely local (BillInfoEntity/BillItemEntity saved from our own generated UBL
+        // invoice at creation time), so every field of it is derivable from the request/config —
+        // buyer straight from the self-declared request fields (no AMS lookup here, unlike F2), and
+        // note buyerOib/supplierOib here come from partyLegalEntity.companyId (bare, no "HR" prefix),
+        // unlike F2BillControllerIT's buyerInfo/supplierInfo which read partyTaxScheme.companyId.
+        MainDataInfo expectedMainDataInfo = new MainDataInfo(
+                LocalDate.now(),
+                null,
+                LocalDate.now().plusDays(15),
+                BillDocumentKind.CommercialInvoice,
+                null,
+                null,
+                "EUR",
+                LocalDate.now().withDayOfMonth(1),
+                LocalDate.now());
+        BuyerInfo expectedBuyerInfo = new BuyerInfo(
+                (String) requestBody.get("buyerName"),
+                (String) requestBody.get("buyerOib"),
+                (String) requestBody.get("buyerStreet"),
+                (String) requestBody.get("buyerCity"),
+                (String) requestBody.get("buyerPostalZone"));
+        SupplierInfo expectedSupplierInfo = new SupplierInfo(
+                supplierProperties.name(),
+                supplierProperties.oib(),
+                supplierProperties.street(),
+                supplierProperties.city(),
+                supplierProperties.postalZone(),
+                supplierProperties.contactName(),
+                supplierProperties.contactOib(),
+                supplierProperties.email(),
+                supplierProperties.phone());
+        BillItemInfo expectedItemInfo = new BillItemInfo(
+                (String) requestBody.get("billItemName"),
+                (String) requestBody.get("billItemDescription"),
+                BigDecimal.ONE, ItemUnitOfMeasure.H87,
+                null, new BigDecimal("100.00"), new BigDecimal("125.00"), null,
+                BillVatRate.Pdv25, null);
+        PaymentInfo expectedPaymentInfo = new PaymentInfo(
+                BillPaymentMethod.CreditTransfer,
+                LocalDate.now().plusDays(15),
+                supplierProperties.iban(),
+                "HR00",
+                billId + "-1-1",
+                "račun " + billId + "/1/1");
+        PriceInfo expectedPriceInfo = new PriceInfo(
+                new BigDecimal("100.00"), new BigDecimal("25.00"), new BigDecimal("125.00"),
+                BigDecimal.ZERO, new BigDecimal("125.00"));
+        BillInfoResponse expectedInfo = new BillInfoResponse(expectedMainDataInfo, expectedBuyerInfo,
+                expectedSupplierInfo, List.of(expectedItemInfo), expectedPaymentInfo, null, expectedPriceInfo);
+        assertThat(info)
+                .usingRecursiveComparison()
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(expectedInfo);
     }
 
     @Test

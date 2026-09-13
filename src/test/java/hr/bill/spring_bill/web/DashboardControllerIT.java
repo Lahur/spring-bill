@@ -16,8 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Drives {@link DashboardController} over HTTP. The Postgres container (and its data) is shared
- * across every IT class in the run, so assertions here don't assume the database starts empty. */
 class DashboardControllerIT extends AbstractIntegrationTest {
 
     @Autowired
@@ -52,9 +50,6 @@ class DashboardControllerIT extends AbstractIntegrationTest {
 
     @Test
     void monthlySummariesReturnsTheMostRecentPersistedMonths() throws Exception {
-        // Far in the future so this is deterministically the most recent month regardless of
-        // whatever else other IT classes have persisted (e.g. BankStatementImportService
-        // refreshing the last few real months as a side effect of importing a statement).
         LocalDate month = LocalDate.of(9999, 1, 1);
         monthlySummaryRepository.save(MonthlySummaryEntity.builder()
                 .month(month)

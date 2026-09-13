@@ -8,10 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Drives {@link BusinessEntityController} over HTTP. {@code /check} makes two real (read-only)
- * calls through the {@code eposlovanje-mock} proxy to Eposlovanje's sandbox — AMS check and
- * business entity lookup — so the OIB below need not correspond to a real sandbox entity; a
- * "not found" business entity alongside a valid AMS check response is an equally valid outcome. */
 class BusinessEntityControllerIT extends AbstractIntegrationTest {
 
     @Test

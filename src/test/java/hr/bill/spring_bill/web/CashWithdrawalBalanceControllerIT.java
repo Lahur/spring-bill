@@ -34,7 +34,7 @@ class CashWithdrawalBalanceControllerIT extends AbstractIntegrationTest {
         String requestJson = objectMapper.writeValueAsString(Map.of(
                 "cashWithdrawalIds", Map.of("1", balance.getId()),
                 "amount", "150.00",
-                "description", "ATM withdrawal",
+                "description", "store bill",
                 "date", LocalDate.now().toString()));
         MockMultipartFile requestPart = new MockMultipartFile("request", "", "application/json", requestJson.getBytes());
 

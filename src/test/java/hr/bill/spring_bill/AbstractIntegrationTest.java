@@ -1,5 +1,7 @@
 package hr.bill.spring_bill;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,48 +36,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * Base for full-{@code @SpringBootTest} integration tests that drive the app through its actual
- * HTTP endpoints (via {@link MockMvc}, security filter chain included — see
- * {@link #jwt() jwt()}), rather than calling service beans directly. So each test class only
- * declares what makes it different, this wires up:
- * <ul>
- *     <li>a throwaway Postgres (Testcontainers), auto-connected via {@link ServiceConnection} —
- *     Flyway migrations run against it for real;</li>
- *     <li>the {@code eposlovanje-mock} container, with {@code bill.eposlovanje/pondi/f1-web.base-url}
- *     pointed at it — its {@code /eposlovanje} and {@code /pondi} routes proxy straight through to
- *     Eposlovanje's test/sandbox environment with baked-in credentials; {@code /f1-web} is a real
- *     in-memory fake, not proxied;</li>
- *     <li>the real {@code hub-bill} image (no Postgres of its own — {@code DB_HOST} is left unset,
- *     which also skips its Flyway migrations), with {@code bill.hub-url} pointed at it, so
- *     {@link hr.bill.spring_bill.clients.bill_pdf.BillPdfClient} renders real PDFs instead of being
- *     stubbed; {@code bill.hub-tenant-id} is blank in {@code application-test.yaml} for the same
- *     reason (see {@link hr.bill.spring_bill.clients.bill_pdf.BillPdfClientConfig});</li>
- *     <li>the {@code mail-bill-test} image (bundles Mailhog in the same container in place of the
- *     real Resend-backed build, see its {@code Dockerfile.test}), with {@code bill.mail-bill.base-url}
- *     pointed at its app port, so {@link hr.bill.spring_bill.clients.mail_bill.MailBillClient} sends
- *     real mail instead of being stubbed; {@link #mailhogMessagesTo(String)} queries its bundled
- *     Mailhog's REST API (a separate exposed port) to assert on what actually got sent;</li>
- *     <li>the {@code test} profile, so {@code bill.*} config comes from
- *     {@code src/test/resources/application-test.yaml} instead of Vault;</li>
- *     <li>{@link MockMvc}, wired through the real {@code SecurityFilterChain} — requests need
- *     {@link #jwt()} to authenticate, since every endpoint but swagger/actuator requires it;</li>
- *     <li>two infrastructure mocks unrelated to what any individual test exercises:
- *     {@link JwtDecoder} (the real bean hits the OIDC issuer/Keycloak at context startup —
- *     {@link #jwt()} bypasses it per-request anyway, by injecting the authentication directly) and
- *     {@link BillMaintenanceScheduler} (its {@code @EventListener(ApplicationReadyEvent.class)}
- *     syncs every {@code BillStrategy} against its real upstream on every context startup).</li>
- * </ul>
- *
- * <p>Containers are started once in a static initializer and never explicitly stopped (Ryuk reaps
- * them at JVM exit) rather than via {@code @Testcontainers}/{@code @Container} — those annotations
- * manage start/stop per <i>declaring</i> test class, so with several subclasses of this class in
- * the same JVM run, one class finishing its tests would stop the (shared, static) container out
- * from under the others, sending them "connection refused". This is the standard Testcontainers
- * "singleton container" pattern for exactly that scenario.</p>
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -100,9 +68,6 @@ public abstract class AbstractIntegrationTest {
     static final GenericContainer<?> eposlovanjeMock = new GenericContainer<>(EPOSLOVANJE_MOCK_IMAGE)
             .withExposedPorts(8082);
 
-    // No DB_HOST set: hub-bill starts with only its ReportsModule/MetricsModule (no TenantsModule,
-    // no Flyway), which is enough to render every report type as long as no x-tenant-id header is
-    // sent (see bill.hub-tenant-id in application-test.yaml).
     static final GenericContainer<?> hubBill = new GenericContainer<>(HUB_BILL_IMAGE)
             .withExposedPorts(3000);
 
@@ -156,37 +121,129 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected BankTransactionRepository bankTransactionRepository;
 
-    // Built locally rather than @Autowired: the app also registers an XmlMapper bean (for CAMT
-    // parsing), and since XmlMapper extends ObjectMapper, autowiring plain ObjectMapper here is
-    // ambiguous — this is purely for reading MockMvc's JSON response bodies in tests, so it isn't
-    // worth depending on which bean wins.
     protected final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    /** A request post-processor that authenticates the request as a JWT principal directly (no
-     * real token, no round-trip through {@link #jwtDecoder}) — required on every call, since
-     * {@code SecurityConfig} requires authentication for anything but swagger/actuator. */
     protected static RequestPostProcessor jwt() {
         return SecurityMockMvcRequestPostProcessors.jwt();
     }
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    /** Counts messages the bundled Mailhog instance has received for {@code recipientEmail}, via
-     * its {@code /api/v2/search?kind=to} REST API — for asserting real mail was actually sent by
-     * {@link hr.bill.spring_bill.clients.mail_bill.MailBillClient}, instead of verifying a mock.
-     * Mailhog is shared (and never cleared) across every test method/class in this run, so callers
-     * comparing before/after counts must do so around the exact action under test. */
+
     protected long mailhogMessagesTo(String recipientEmail) throws IOException, InterruptedException {
+        return mailhogSearch(recipientEmail).total();
+    }
+
+
+    protected MailhogMessage mailhogLatestMessageTo(String recipientEmail) throws IOException, InterruptedException {
+        return mailhogSearch(recipientEmail).items().stream()
+                .max(Comparator.comparing(MailhogItem::created))
+                .map(MailhogItem::toMailhogMessage)
+                .orElseThrow(() -> new AssertionError("No mailhog message found for recipient " + recipientEmail));
+    }
+
+    private MailhogSearchResult mailhogSearch(String recipientEmail) throws IOException, InterruptedException {
         String url = mailhogApiBaseUrl() + "/api/v2/search?kind=to&query="
                 + URLEncoder.encode(recipientEmail, StandardCharsets.UTF_8);
         HttpResponse<String> response = HTTP_CLIENT.send(
                 HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofString());
-        return objectMapper.readTree(response.body()).get("total").asLong();
+        return MAILHOG_OBJECT_MAPPER.readValue(response.body(), MailhogSearchResult.class);
     }
 
-    /** Seeds a minimal bank_statement + bank_transaction row directly (bypassing the whole
-     * CAMT-import pipeline), for tests that need a real {@link BankTransactionEntity} to hang a
-     * downstream entity (POS transaction, cash withdrawal balance, ...) off of via its FK. */
+    /** A parsed Mailhog message, independent of Mailhog's raw MIME-part JSON shape. */
+    public record MailhogMessage(String from, List<String> to, String subject, String body,
+                                  List<MailhogAttachment> attachments) {
+    }
+
+    public record MailhogAttachment(String fileName, String contentType, int sizeBytes) {
+    }
+
+    // Mailhog v2 API JSON shape (https://github.com/mailhog/MailHog/blob/master/docs/APIv2/swagger-2.0.yaml)
+    // uses PascalCase field names ("Total", "From", "Content", ...); kept private since callers only ever
+    // see the flattened MailhogMessage/MailhogAttachment above.
+    private static final ObjectMapper MAILHOG_OBJECT_MAPPER = new ObjectMapper()
+            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    private record MailhogSearchResult(long total, List<MailhogItem> items) {
+
+        private MailhogSearchResult {
+            items = items == null ? List.of() : items;
+        }
+    }
+
+    private record MailhogMailbox(String mailbox, String domain) {
+        String address() {
+            return mailbox + "@" + domain;
+        }
+    }
+
+    private record MailhogPart(Map<String, List<String>> headers, String body) {
+
+        private MailhogPart {
+            headers = headers == null ? Map.of() : headers;
+            body = body == null ? "" : body;
+        }
+
+        private String header(String name) {
+            List<String> values = headers.get(name);
+            return values == null || values.isEmpty() ? null : values.get(0);
+        }
+
+        private boolean isAttachment() {
+            String disposition = header("Content-Disposition");
+            return disposition != null && disposition.toLowerCase().startsWith("attachment");
+        }
+
+        private String attachmentFileName() {
+            String disposition = header("Content-Disposition");
+            if (disposition == null) return null;
+            Matcher matcher = Pattern.compile("filename=\"?([^\";]+)\"?").matcher(disposition);
+            return matcher.find() ? matcher.group(1) : null;
+        }
+
+        private String contentType() {
+            String contentType = header("Content-Type");
+            return contentType == null ? null : contentType.split(";")[0].trim();
+        }
+
+        private byte[] decodedBody() {
+            String encoding = header("Content-Transfer-Encoding");
+            if (encoding != null && encoding.equalsIgnoreCase("base64")) {
+                return Base64.getMimeDecoder().decode(body.replaceAll("\\s", ""));
+            }
+            return body.getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
+    private record MailhogMime(List<MailhogPart> parts) {
+
+        private MailhogMime {
+            parts = parts == null ? List.of() : parts;
+        }
+    }
+
+    private record MailhogItem(String id, MailhogMailbox from, List<MailhogMailbox> to, MailhogPart content,
+                                MailhogMime mime, String created) {
+
+        private MailhogMessage toMailhogMessage() {
+            String subject = content.header("Subject");
+            List<MailhogPart> parts = mime == null || mime.parts().isEmpty() ? List.of(content) : mime.parts();
+            String body = parts.stream()
+                    .filter(part -> !part.isAttachment())
+                    .findFirst()
+                    .map(part -> new String(part.decodedBody(), StandardCharsets.UTF_8))
+                    .orElse(null);
+            List<MailhogAttachment> attachments = parts.stream()
+                    .filter(MailhogPart::isAttachment)
+                    .map(part -> new MailhogAttachment(part.attachmentFileName(), part.contentType(),
+                            part.decodedBody().length))
+                    .toList();
+            return new MailhogMessage(from.address(), to.stream().map(MailhogMailbox::address).toList(),
+                    subject, body, attachments);
+        }
+    }
+
     protected BankTransactionEntity seedBankTransaction(BigDecimal amount, CreditDebitIndicator indicator) {
         BankStatementEntity statement = bankStatementRepository.save(BankStatementEntity.builder()
                 .statementId(UUID.randomUUID().toString())
