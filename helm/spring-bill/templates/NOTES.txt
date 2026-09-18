@@ -13,7 +13,7 @@ applied before installing this chart.
   kubectl -n {{ .Release.Namespace }} get secret postgres -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
   kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ .Values.vault.serviceName }} -- sh
   export VAULT_ADDR=http://127.0.0.1:8200
-  export VAULT_TOKEN={{ .Values.vault.token }}
+  export VAULT_TOKEN=$VAULT_DEV_TOKEN   # set in the vault pod from the "{{ .Values.vault.tokenSecret.name }}" Secret
 
   vault kv put secret/spring-bill \
     spring.datasource.url="jdbc:postgresql://postgres:5432/spring_bill" \

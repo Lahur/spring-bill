@@ -31,9 +31,12 @@ ingress:
 vault:
   # Postgres and Vault are provisioned separately by k8s_pulumi/pulumi_hetzner
   # in the same namespace ("postgres"/"vault" Services, db "spring_bill").
-  # serviceName/token must match that stack's Vault deployment.
+  # serviceName/tokenSecret must match that stack's Vault deployment; the token is
+  # generated there and stored in the "vault-token" Secret, never in this chart.
   serviceName: vault
-  token: root
+  tokenSecret:
+    name: vault-token
+    key: token
 
 bill:
   pos:

@@ -30,7 +30,10 @@ spec:
             - name: VAULT_ADDR
               value: "http://{{ .Values.vault.serviceName }}:8200"
             - name: VAULT_TOKEN
-              value: {{ .Values.vault.token | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.tokenSecret.name }}
+                  key: {{ .Values.vault.tokenSecret.key }}
           volumeMounts:
             - name: pos-storage
               mountPath: {{ .Values.bill.pos.path }}
