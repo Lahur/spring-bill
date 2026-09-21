@@ -18,6 +18,13 @@ import hr.bill.spring_bill.dto.web.bill.info.MainDataInfo;
 import hr.bill.spring_bill.dto.web.bill.info.PriceInfo;
 import hr.bill.spring_bill.dto.web.bill.info.SupplierInfo;
 import hr.bill.spring_bill.model.enums.BillType;
+import hr.bill.spring_bill.model.BankTransactionEntity;
+import hr.bill.spring_bill.model.BillEntity;
+import hr.bill.spring_bill.model.enums.BillDocumentStatus;
+import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.service.HrPaymentReferenceService;
+import hr.bill.spring_bill.service.CroatianTimeZone;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -170,6 +177,24 @@ class F1BillControllerIT extends AbstractIntegrationTest {
 
         // A second refresh must update the existing rows instead of violating the unique constraint.
         mockMvc.perform(post("/bill/f1/full-refresh").with(jwt())).andExpect(status().isOk());
+    }
+
+    @Test
+    void fullRefreshMarksBillsPaidFromImportedBankStatements() throws Exception {
+        BillResponse created = createBill();
+        billRepository.deleteById(created.id());
+        BankTransactionEntity payment = seedBankTransaction(new BigDecimal("125.00"), CreditDebitIndicator.CRDT);
+        payment.setReceiverIban(supplierProperties.iban());
+        payment.setReference(HrPaymentReferenceService.buildReference(created.fullBillId()));
+        payment.setTransactionDate(LocalDateTime.now(CroatianTimeZone.ZONE));
+        bankTransactionRepository.save(payment);
+
+        mockMvc.perform(post("/bill/f1/full-refresh").with(jwt())).andExpect(status().isOk());
+
+        BillEntity refreshed = billRepository.findBySystemIdAndBillType(created.systemId(), BillType.F1_BILL).orElseThrow();
+        assertThat(refreshed.getDocumentStatus()).isEqualTo(BillDocumentStatus.PlacenUPotpunosti);
+        assertThat(bankTransactionRepository.findById(payment.getId()).orElseThrow().getBillSystemId())
+                .isEqualTo(String.valueOf(created.systemId()));
     }
 
     @Test

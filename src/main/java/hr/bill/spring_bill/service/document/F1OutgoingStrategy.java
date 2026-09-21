@@ -72,6 +72,8 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     private final PaymentReferenceMatcher paymentReferenceMatcher;
 
+    private final BankStatementPaymentSync bankStatementPaymentSync;
+
     @Value("${bill.schedule.sync-lookback-weeks}")
     private long syncLookbackWeeks;
 
@@ -297,6 +299,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                     })
                     .orElse(mapped));
         });
+        bankStatementPaymentSync.sync(this, BillType.F1_BILL, monthStart);
         log.info("Fully refreshed {} F1 bill(s) since {}", receipts.size(), monthStart);
         return receipts.size();
     }

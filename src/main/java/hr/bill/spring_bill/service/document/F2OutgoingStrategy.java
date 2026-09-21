@@ -90,6 +90,8 @@ public class F2OutgoingStrategy implements BillStrategy {
 
     private final BillRepository repository;
 
+    private final BankStatementPaymentSync bankStatementPaymentSync;
+
     @Override
     public BillReportType getType() {
         return BillReportType.F2_OUTGOING;
@@ -305,6 +307,7 @@ public class F2OutgoingStrategy implements BillStrategy {
         int synced = syncDocuments(DocumentListParams.builder()
                 .issuedFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .build(), monthStart);
+        bankStatementPaymentSync.sync(this, BillType.F2_BILL, monthStart);
         log.info("Fully refreshed {} F2 outgoing bill(s) since {}", synced, monthStart);
         return synced;
     }
