@@ -3,6 +3,7 @@ package hr.bill.spring_bill.service;
 public class HrPaymentReferenceService {
 
     public static String extractHrModel(String paymentId) {
+        if (paymentId == null) return null;
         String noSpaces = paymentId.replace(" ", "");
         if (noSpaces.startsWith("HR")) {
             String afterHr = noSpaces.substring(2);
@@ -17,6 +18,7 @@ public class HrPaymentReferenceService {
     }
 
     public static String trimHrPrefix(String paymentId) {
+        if (paymentId == null) return null;
         String noSpaces = paymentId.replace(" ", "");
         String afterHr = noSpaces.startsWith("HR") ? noSpaces.substring(2) : noSpaces;
         String afterModel = afterHr.length() >= 2 && afterHr.substring(0, 2).chars().allMatch(Character::isDigit)
@@ -32,6 +34,7 @@ public class HrPaymentReferenceService {
     }
 
     public static String fullReference(String paymentId) {
+        if (paymentId == null) return null;
         return extractHrModel(paymentId) + trimHrPrefix(paymentId);
     }
 
