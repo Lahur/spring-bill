@@ -32,6 +32,8 @@ public interface BillStrategy extends DocumentStrategy {
 
     void sync();
 
+    int fullRefresh();
+
     void deleteAll();
 
     int markPaidFromBankStatement(List<BankTransactionEntity> transactions);

@@ -75,6 +75,17 @@ public class F2ReportBillController {
         return f2ReportStrategy.createBill(request);
     }
 
+    @PostMapping("/full-refresh")
+    @Operation(summary = "Fully refresh bills for the current month",
+            description = "F2 report bills have no upstream source, so this is a no-op that always returns 0. Returns the number of bills synced")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills refreshed successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public int fullRefresh() {
+        return f2ReportStrategy.fullRefresh();
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get bill details by ID")
     @ApiResponses({

@@ -35,6 +35,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Drives {@link F2ReportBillController} over HTTP. Unlike {@link F2BillControllerIT}, there's no
@@ -173,6 +174,13 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
 
         assertThat(review.totalAmount()).isEqualByComparingTo("125.00");
         assertThat(countBills()).isEqualTo(countBefore);
+    }
+
+    @Test
+    void fullRefreshIsANoOp() throws Exception {
+        mockMvc.perform(post("/bill/f2-report/full-refresh").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(content().string("0"));
     }
 
     @Test

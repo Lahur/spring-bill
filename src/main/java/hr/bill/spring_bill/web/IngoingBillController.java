@@ -44,6 +44,17 @@ public class IngoingBillController {
         return ingoingStrategy.getBillsFilter(params);
     }
 
+    @PostMapping("/full-refresh")
+    @Operation(summary = "Fully refresh bills for the current month",
+            description = "Re-syncs all bills issued or modified from the start of the current month until now, ignoring the last-sync cursor. Returns the number of bills synced")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills refreshed successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public int fullRefresh() {
+        return ingoingStrategy.fullRefresh();
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get bill details by ID")
     @ApiResponses({

@@ -98,6 +98,17 @@ public class F2BillController {
         return f2OutgoingStrategy.cancel(originalId.toString(), newId.toString());
     }
 
+    @PostMapping("/full-refresh")
+    @Operation(summary = "Fully refresh bills for the current month",
+            description = "Re-syncs all bills issued or modified from the start of the current month until now, ignoring the last-sync cursor. Returns the number of bills synced")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills refreshed successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public int fullRefresh() {
+        return f2OutgoingStrategy.fullRefresh();
+    }
+
     @PostMapping("/review")
     @Operation(summary = "Preview a bill before creating it")
     @ApiResponses({

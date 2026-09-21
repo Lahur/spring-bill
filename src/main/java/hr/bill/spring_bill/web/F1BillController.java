@@ -56,6 +56,17 @@ public class F1BillController {
         return f1OutgoingStrategy.createBill(request);
     }
 
+    @PostMapping("/full-refresh")
+    @Operation(summary = "Fully refresh bills for the current month",
+            description = "Re-syncs all receipts issued from the start of the current month until now, ignoring the last-sync cursor. Returns the number of bills synced")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bills refreshed successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public int fullRefresh() {
+        return f1OutgoingStrategy.fullRefresh();
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get bill details by ID")
     @ApiResponses({

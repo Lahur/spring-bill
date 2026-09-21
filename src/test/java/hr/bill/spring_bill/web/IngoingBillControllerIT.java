@@ -123,6 +123,19 @@ class IngoingBillControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void fullRefreshSyncsCurrentMonthBillsFromTheUpstreamSandbox() throws Exception {
+        int refreshed = Integer.parseInt(mockMvc.perform(post("/bill/ingoing/full-refresh").with(jwt()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        assertThat(refreshed).isNotNegative();
+        assertThat(billRepository.findAllByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL)).hasSizeGreaterThanOrEqualTo(refreshed);
+
+        // Running it again must update the existing rows instead of violating the unique constraint.
+        mockMvc.perform(post("/bill/ingoing/full-refresh").with(jwt())).andExpect(status().isOk());
+    }
+
+    @Test
     void unauthenticatedRequestIsRejected() throws Exception {
         mockMvc.perform(get("/bill/ingoing")).andExpect(status().isUnauthorized());
     }

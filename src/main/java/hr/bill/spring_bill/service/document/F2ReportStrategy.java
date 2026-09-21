@@ -279,6 +279,12 @@ public class F2ReportStrategy implements BillStrategy {
     }
 
     @Override
+    public int fullRefresh() {
+        // F2_REPORT has no upstream source, so there is nothing to refresh.
+        return 0;
+    }
+
+    @Override
     public void deleteAll() {
         log.debug("Deleting all F2 report bills");
         repository.deleteAllByBillType(BillType.F2_REPORT);

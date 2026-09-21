@@ -294,10 +294,26 @@ public class F2OutgoingStrategy implements BillStrategy {
 
         // Documents newly issued since the last sync cursor, plus any document whose status changed
         // today - the latter may have been issued before the cursor and would otherwise be missed.
+        int synced = syncDocuments(builder.build(), LocalDate.now(CroatianTimeZone.ZONE));
+        log.info("Synced {} F2 outgoing bill(s)", synced);
+    }
+
+    @Override
+    public int fullRefresh() {
+        log.debug("Fully refreshing F2 outgoing bills for the current month");
+        LocalDate monthStart = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
+        int synced = syncDocuments(DocumentListParams.builder()
+                .issuedFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .build(), monthStart);
+        log.info("Fully refreshed {} F2 outgoing bill(s) since {}", synced, monthStart);
+        return synced;
+    }
+
+    private int syncDocuments(DocumentListParams issuedParams, LocalDate modifiedFrom) {
         Map<Long, DocumentStatusResponse> documents = new LinkedHashMap<>();
-        eposlovanjeClient.getOutgoingDocuments(builder.build()).forEach(d -> documents.put(d.id(), d));
+        eposlovanjeClient.getOutgoingDocuments(issuedParams).forEach(d -> documents.put(d.id(), d));
         eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                        .modifiedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .modifiedFrom(modifiedFrom.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                         .build())
                 .forEach(d -> documents.put(d.id(), d));
 
@@ -306,7 +322,7 @@ public class F2OutgoingStrategy implements BillStrategy {
                 .toList();
         logDuplicateSystemIds(billEntities);
         repository.saveAll(billEntities);
-        log.info("Synced {} F2 outgoing bill(s)", billEntities.size());
+        return billEntities.size();
     }
 
     private BillEntity toSyncedBillEntity(DocumentStatusResponse dsr) {

@@ -4,6 +4,7 @@ import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.FiscalStatus;
 import hr.bill.spring_bill.dto.web.bill.info.BillDocumentKind;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
@@ -37,6 +38,9 @@ class F1BillControllerIT extends AbstractIntegrationTest {
 
     @Autowired
     private SupplierProperties supplierProperties;
+
+    @Autowired
+    private BillRepository billRepository;
 
     @Test
     void createsListsAndFetchesABill() throws Exception {
@@ -149,6 +153,23 @@ class F1BillControllerIT extends AbstractIntegrationTest {
                         .andReturn().getResponse().getContentAsByteArray(), BillResponse.class);
 
         assertThat(cancelled.systemId()).isNotEqualTo(created.systemId());
+    }
+
+    @Test
+    void fullRefreshRestoresCurrentMonthBills() throws Exception {
+        BillResponse created = createBill();
+        billRepository.deleteById(created.id());
+        assertThat(billRepository.findBySystemIdAndBillType(created.systemId(), BillType.F1_BILL)).isEmpty();
+
+        int refreshed = Integer.parseInt(mockMvc.perform(post("/bill/f1/full-refresh").with(jwt()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        assertThat(refreshed).isPositive();
+        assertThat(billRepository.findBySystemIdAndBillType(created.systemId(), BillType.F1_BILL)).isPresent();
+
+        // A second refresh must update the existing rows instead of violating the unique constraint.
+        mockMvc.perform(post("/bill/f1/full-refresh").with(jwt())).andExpect(status().isOk());
     }
 
     @Test

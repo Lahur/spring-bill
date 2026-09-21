@@ -3,6 +3,7 @@ package hr.bill.spring_bill.web;
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.web.BusinessCheckResponse;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
@@ -46,6 +47,9 @@ class F2BillControllerIT extends AbstractIntegrationTest {
 
     @Autowired
     private SupplierProperties supplierProperties;
+
+    @Autowired
+    private BillRepository billRepository;
 
     @Test
     void createsListsAndFetchesABill() throws Exception {
@@ -164,6 +168,20 @@ class F2BillControllerIT extends AbstractIntegrationTest {
                         .andReturn().getResponse().getContentAsByteArray(), BillResponse.class);
 
         assertThat(cancelled.systemId()).isNotEqualTo(created.systemId());
+    }
+
+    @Test
+    void fullRefreshRestoresCurrentMonthBills() throws Exception {
+        BillResponse created = createBill();
+        billRepository.deleteById(created.id());
+        assertThat(billRepository.findBySystemIdAndBillType(created.systemId(), BillType.F2_BILL)).isEmpty();
+
+        int refreshed = Integer.parseInt(mockMvc.perform(post("/bill/f2/full-refresh").with(jwt()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        assertThat(refreshed).isPositive();
+        assertThat(billRepository.findBySystemIdAndBillType(created.systemId(), BillType.F2_BILL)).isPresent();
     }
 
     @Test

@@ -276,6 +276,32 @@ public class F1OutgoingStrategy implements BillStrategy {
     }
 
     @Override
+    public int fullRefresh() {
+        log.debug("Fully refreshing F1 bills for the current month");
+        LocalDate monthStart = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
+        GetReceiptsQuery query = GetReceiptsQuery.builder()
+                .dateFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .build();
+        List<ReceiptSummaryDto> receipts = f1WebClient.getReceipts(query).items();
+        receipts.forEach(ri -> {
+            BillEntity mapped = billEntityMapper.toBillEntity(f1WebClient.getReceipt(ri.id()), BillType.F1_BILL);
+            repository.save(repository.findBySystemIdAndBillType(mapped.getSystemId(), BillType.F1_BILL)
+                    .map(existing -> {
+                        existing.setDocumentStatus(mapped.getDocumentStatus());
+                        existing.setTotalAmount(mapped.getTotalAmount());
+                        existing.setClientName(mapped.getClientName());
+                        existing.setClientOib(mapped.getClientOib());
+                        existing.setFullBillId(mapped.getFullBillId());
+                        existing.setBillDate(mapped.getBillDate());
+                        return existing;
+                    })
+                    .orElse(mapped));
+        });
+        log.info("Fully refreshed {} F1 bill(s) since {}", receipts.size(), monthStart);
+        return receipts.size();
+    }
+
+    @Override
     public void deleteAll() {
         log.debug("Deleting all F1 bills");
         repository.deleteAllByBillType(BillType.F1_BILL);
