@@ -237,9 +237,10 @@ public class F2OutgoingStrategy implements BillStrategy {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
+        LocalDate billDate = LocalDate.parse(orig.getIssueDate());
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
-                .issuedTo(LocalDate.now(CroatianTimeZone.ZONE).plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedFrom(billDate.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedTo(billDate.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .build());
         DocumentStatusResponse lastBill = bills.stream()
                 .filter(b -> b.documentId().equals(String.format("%d/1/1", parsedNewId)))
