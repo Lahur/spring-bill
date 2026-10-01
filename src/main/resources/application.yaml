@@ -14,3 +14,5 @@ bill:
     delete-on-startup: false
   statement:
     remote-match-lookback-months: 6
+    mail-enabled: false
+    mail-to: ""

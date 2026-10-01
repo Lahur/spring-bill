@@ -24,9 +24,6 @@ public class BankStatementEntity {
     @Column(name = "statement_id", nullable = false)
     private String statementId;
 
-    @Column(name = "sequence_number")
-    private Integer sequenceNumber;
-
     @Column(name = "iban", length = 34, nullable = false)
     private String iban;
 
@@ -47,9 +44,6 @@ public class BankStatementEntity {
 
     @Column(name = "bank_bic", length = 20)
     private String bankBic;
-
-    @Column(name = "bank_oib", length = 20)
-    private String bankOib;
 
     @Column(name = "period_from")
     private LocalDate periodFrom;

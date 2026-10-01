@@ -102,6 +102,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("bill.eposlovanje.base-url", () -> eposlovanjeMockBaseUrl() + "/eposlovanje");
         registry.add("bill.pondi.base-url", () -> eposlovanjeMockBaseUrl() + "/pondi");
         registry.add("bill.f1-web.base-url", () -> eposlovanjeMockBaseUrl() + "/f1-web");
+        registry.add("bill.ais-eposlovanje.base-url", () -> eposlovanjeMockBaseUrl() + "/ais");
         registry.add("bill.hub-url", AbstractIntegrationTest::hubBillBaseUrl);
         registry.add("bill.mail-bill.base-url", AbstractIntegrationTest::mailBillBaseUrl);
     }

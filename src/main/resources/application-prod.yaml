@@ -17,6 +17,7 @@ bill:
     sync-cron: "0 30 1 * * *"
     delete-cron: "0 0 1 1 * *"
     monthly-summary-cron: "0 0 2 1 * *"
+    bank-statement-cron: "0 0 3 * * *"
     sync-lookback-weeks: 1
   path:
     pos: /data/pos

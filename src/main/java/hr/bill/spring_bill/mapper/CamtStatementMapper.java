@@ -11,7 +11,6 @@ import hr.bill.spring_bill.xml.camt.model.CamtEntry;
 import hr.bill.spring_bill.xml.camt.model.CamtEntryTransaction;
 import hr.bill.spring_bill.xml.camt.model.CamtNumberAndSumOfTransactions;
 import hr.bill.spring_bill.xml.camt.model.CamtParty;
-import hr.bill.spring_bill.xml.camt.model.CamtPostalAddress;
 import hr.bill.spring_bill.xml.camt.model.CamtStatement;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -22,7 +21,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Mapper(componentModel = "spring", imports = {CreditDebitIndicator.class, BankTransactionType.class, BankStatementEntity.class, LocalDate.class, LocalDateTime.class, BigDecimal.class})
 public interface CamtStatementMapper {
@@ -30,7 +28,6 @@ public interface CamtStatementMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(source = "doc.bkToCstmrStmt.stmt.id", target = "statementId")
-    @Mapping(target = "sequenceNumber", expression = "java(parseInteger(doc.getBkToCstmrStmt().getStmt().getLglSeqNb()))")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.id.iban", target = "iban")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.ccy", target = "currency")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.nm", target = "accountName")
@@ -38,7 +35,6 @@ public interface CamtStatementMapper {
     @Mapping(target = "ownerAddress", expression = "java(ownerAddress(doc.getBkToCstmrStmt().getStmt()))")
     @Mapping(target = "ownerOib", expression = "java(ownerOib(doc.getBkToCstmrStmt().getStmt()))")
     @Mapping(target = "bankBic", expression = "java(reportingBic(doc.getBkToCstmrStmt().getStmt()))")
-    @Mapping(target = "bankOib", expression = "java(reportingOib(doc.getBkToCstmrStmt().getStmt()))")
     @Mapping(target = "periodFrom", expression = "java(LocalDateTime.parse(doc.getBkToCstmrStmt().getStmt().getFrToDt().getFrDtTm()).toLocalDate())")
     @Mapping(target = "periodTo", expression = "java(LocalDateTime.parse(doc.getBkToCstmrStmt().getStmt().getFrToDt().getToDtTm()).toLocalDate())")
     @Mapping(target = "openingBalance", expression = "java(balance(doc.getBkToCstmrStmt().getStmt(), \"OPBD\"))")
@@ -57,10 +53,8 @@ public interface CamtStatementMapper {
     @Mapping(target = "senderIban", expression = "java(senderIban(entry, tx, statementIban))")
     @Mapping(target = "receiverIban", expression = "java(receiverIban(entry, tx, statementIban))")
     @Mapping(target = "counterpartyName", expression = "java(counterpartyName(entry, tx))")
-    @Mapping(target = "counterpartyAddress", expression = "java(counterpartyAddress(entry, tx))")
     @Mapping(source = "tx.rmtInf.strd.cdtrRefInf.ref", target = "reference")
     @Mapping(source = "tx.refs.endToEndId", target = "payerReference")
-    @Mapping(source = "entry.acctSvcrRef", target = "entryReference")
     @Mapping(source = "tx.refs.acctSvcrRef", target = "transactionReference")
     @Mapping(source = "tx.rmtInf.strd.addtlRmtInf", target = "additionalRemittanceInfo")
     @Mapping(target = "transactionDate", expression = "java(entry.getBookgDt() != null ? LocalDateTime.parse(entry.getBookgDt().getDtTm()) : null)")
@@ -112,24 +106,6 @@ public interface CamtStatementMapper {
     default String counterpartyName(CamtEntry entry, CamtEntryTransaction tx) {
         CamtParty party = counterparty(entry, tx);
         return party != null ? party.getNm() : null;
-    }
-
-    default String counterpartyAddress(CamtEntry entry, CamtEntryTransaction tx) {
-        CamtParty party = counterparty(entry, tx);
-        if (party == null || party.getPstlAdr() == null) {
-            return null;
-        }
-        CamtPostalAddress adr = party.getPstlAdr();
-        String street = Stream.of(adr.getStrtNm(), adr.getBldgNb())
-                .filter(s -> s != null && !s.isBlank())
-                .collect(Collectors.joining(" "));
-        String city = Stream.of(adr.getPstCd(), adr.getTwnNm())
-                .filter(s -> s != null && !s.isBlank())
-                .collect(Collectors.joining(" "));
-        String joined = Stream.of(street, city, adr.getCtry())
-                .filter(s -> s != null && !s.isBlank())
-                .collect(Collectors.joining(", "));
-        return joined.isBlank() ? null : joined;
     }
 
     default BankTransactionType transactionType(CamtEntry entry) {
@@ -185,15 +161,6 @@ public interface CamtStatementMapper {
         }
         String tail = prtry.substring(prtry.length() - 11);
         return tail.chars().allMatch(Character::isDigit) ? prtry.substring(0, prtry.length() - 11) : prtry;
-    }
-
-    default String reportingOib(CamtStatement stmt) {
-        String prtry = reportingPrtry(stmt);
-        if (prtry == null || prtry.length() <= 11) {
-            return null;
-        }
-        String tail = prtry.substring(prtry.length() - 11);
-        return tail.chars().allMatch(Character::isDigit) ? tail : null;
     }
 
     default BigDecimal balance(CamtStatement stmt, String code) {

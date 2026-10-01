@@ -43,17 +43,11 @@ public class BankTransactionEntity {
     @Column(name = "counterparty_name", length = 140)
     private String counterpartyName;
 
-    @Column(name = "counterparty_address", length = 210)
-    private String counterpartyAddress;
-
     @Column(name = "reference", length = 35)
     private String reference;
 
     @Column(name = "payer_reference", length = 35)
     private String payerReference;
-
-    @Column(name = "entry_reference", length = 64)
-    private String entryReference;
 
     @Column(name = "transaction_reference", length = 64)
     private String transactionReference;

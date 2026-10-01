@@ -1,6 +1,6 @@
 # Test-only values for the "test" profile, so integration tests don't depend on the local Vault
 # dev server. Mirrors the property names Vault normally supplies (see vault/entrypoint.sh and
-# application-dev.yaml). The bill.eposlovanje/pondi/f1-web/hub/mail-bill base-urls below are
+# application-dev.yaml). The bill.eposlovanje/pondi/f1-web/ais-eposlovanje/hub/mail-bill base-urls below are
 # overridden at runtime by AbstractIntegrationTest's @DynamicPropertySource to point at the
 # eposlovanje-mock/hub-bill/mail-bill-test containers; the api-keys are unused by the mock (it
 # injects its own real ones) but are required here because they're read via strict @Value(...)
@@ -19,6 +19,7 @@ bill:
     sync-cron: "0 30 1 * * *"
     delete-cron: "0 0 1 1 * *"
     monthly-summary-cron: "0 0 2 1 * *"
+    bank-statement-cron: "0 0 3 * * *"
     sync-lookback-weeks: 156
   supplier:
     # Must be the real OIB the eposlovanje-mock sandbox account is registered under: on every UBL
@@ -59,3 +60,6 @@ bill:
   pondi:
     base-url: "http://localhost:9"
     api-key: "test-pondi-key"
+  ais-eposlovanje:
+    base-url: "http://localhost:9"
+    api-key: "test-ais-key"

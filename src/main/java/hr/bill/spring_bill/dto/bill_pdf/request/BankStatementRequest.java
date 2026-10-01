@@ -9,7 +9,6 @@ import java.util.List;
 public record BankStatementRequest(
         String bankName,
         String bankAddress,
-        String bankOib,
         String bankBic,
         String statementNumber,
         String statementDate,
