@@ -1,6 +1,7 @@
 package hr.bill.spring_bill.service.document;
 
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
+import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.model.BankTransactionEntity;
@@ -33,15 +34,16 @@ public class BankStatementPaymentSync {
 
     private final PaymentReferenceMatcher paymentReferenceMatcher;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     /**
      * @return number of bills of {@code billType} issued from {@code from} onwards that were marked as paid
      */
     public int sync(BillStrategy strategy, BillType billType, LocalDate from) {
+        TenantEntity tenant = tenantService.get();
         List<BankTransactionEntity> transactions = bankTransactionRepository
                 .findAllByCreditDebitIndicatorAndReceiverIbanIgnoreCaseAndTransactionDateGreaterThanEqual(
-                        CreditDebitIndicator.CRDT, supplierProperties.iban(), from.atStartOfDay());
+                        CreditDebitIndicator.CRDT, tenant.getIban(), from.atStartOfDay());
         log.debug("Checking {} bill(s) against {} bank transaction(s) since {}", billType, transactions.size(), from);
 
         int alreadyBooked = markBillsWithBookedTransactions(billType, from);

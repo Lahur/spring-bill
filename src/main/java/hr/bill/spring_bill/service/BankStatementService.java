@@ -1,7 +1,7 @@
 package hr.bill.spring_bill.service;
 
 import hr.bill.spring_bill.clients.ais_eposlovanje.AisEposlovanjeClient;
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
 import hr.bill.spring_bill.dao.BankStatementRepository;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
 import hr.bill.spring_bill.dto.ais_eposlovanje.response.BalancesResponse;
@@ -59,7 +59,7 @@ public class BankStatementService {
 
     private final AisEposlovanjeClient aisEposlovanjeClient;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     private final AisTransactionMapper aisTransactionMapper;
 
@@ -219,6 +219,7 @@ public class BankStatementService {
 
     private BankStatementEntity toBankStatementEntity(LocalDate day, List<Transaction> transactions,
                                                       InstitutionResponse institution, BigDecimal closingBalance) {
+        TenantEntity tenant = tenantService.get();
         List<BigDecimal> amounts = transactions.stream().map(aisTransactionMapper::signedAmount).toList();
         List<BigDecimal> credits = amounts.stream().filter(a -> a.signum() > 0).toList();
         List<BigDecimal> debits = amounts.stream().filter(a -> a.signum() < 0).map(BigDecimal::abs).toList();
@@ -229,11 +230,11 @@ public class BankStatementService {
                 .bankBic(institution.bic())
                 .createdAt(LocalDateTime.now())
                 .currency(transactions.getFirst().transactionAmount().currency())
-                .iban(supplierProperties.iban())
-                .ownerAddress(String.format("%s, %s", supplierProperties.city().toUpperCase(),
-                        supplierProperties.street().toUpperCase()))
-                .ownerName(supplierProperties.name())
-                .ownerOib(supplierProperties.oib())
+                .iban(tenant.getIban())
+                .ownerAddress(String.format("%s, %s", tenant.getCity().toUpperCase(),
+                        tenant.getStreet().toUpperCase()))
+                .ownerName(tenant.getName())
+                .ownerOib(tenant.getOib())
                 .periodFrom(day)
                 .periodTo(day)
                 .openingBalance(closingBalance != null ? closingBalance.subtract(net) : null)
@@ -260,7 +261,8 @@ public class BankStatementService {
     }
 
     private String statementId(LocalDate day) {
-        return supplierProperties.iban() + "-" + day.format(DateTimeFormatter.BASIC_ISO_DATE);
+        TenantEntity tenant = tenantService.get();
+        return tenant.getIban() + "-" + day.format(DateTimeFormatter.BASIC_ISO_DATE);
     }
 
     private Balance bookedBalance(BalancesResponse response) {

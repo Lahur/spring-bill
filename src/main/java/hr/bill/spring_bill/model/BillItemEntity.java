@@ -4,22 +4,19 @@ import hr.bill.spring_bill.dto.eposlovanje.enums.UnitOfMeasure;
 import hr.bill.spring_bill.dto.eposlovanje.enums.VatCategory;
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Entity
 @Table(name = "bill_item")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BillItemEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class BillItemEntity extends TenantScopedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bill_info_id", nullable = false)

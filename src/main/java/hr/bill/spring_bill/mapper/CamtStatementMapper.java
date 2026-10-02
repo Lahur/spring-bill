@@ -44,6 +44,7 @@ public interface CamtStatementMapper {
     @Mapping(target = "debitCount", expression = "java(summaryCount(doc.getBkToCstmrStmt().getStmt(), false))")
     @Mapping(target = "debitSum", expression = "java(summarySum(doc.getBkToCstmrStmt().getStmt(), false))")
     @Mapping(target = "createdAt", expression = "java(LocalDateTime.parse(doc.getBkToCstmrStmt().getStmt().getCreDtTm()))")
+    @Mapping(target = "tenantId", ignore = true)
     BankStatementEntity toBankStatementEntity(CamtDocument doc);
 
     @Mapping(target = "id", ignore = true)
@@ -61,6 +62,7 @@ public interface CamtStatementMapper {
     @Mapping(target = "valueDate", expression = "java(entry.getValDt() != null && entry.getValDt().getDt() != null ? LocalDate.parse(entry.getValDt().getDt()) : null)")
     @Mapping(target = "transactionType", expression = "java(transactionType(entry))")
     @Mapping(target = "billSystemId", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     BankTransactionEntity toBankTransactionEntity(CamtEntry entry, CamtEntryTransaction tx, UUID bankStatementId, String statementIban);
 
     default List<BankTransactionEntity> toBankTransactionEntities(CamtDocument doc, UUID bankStatementId) {

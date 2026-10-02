@@ -62,7 +62,7 @@ public class CashWithdrawalBalanceService {
 
     public void importWithdrawalStatements(List<BankTransactionEntity> bankTransactions) {
         Map<TenantPropety, TenantPropertyEntity> counters = loadCounters();
-        List<CashWithdrawalBalanceEntity> cashWithdrawalBalances = bankTransactions.stream().map(bt -> CashWithdrawalBalanceEntity.builder()
+        List<CashWithdrawalBalanceEntity> cashWithdrawalBalances = bankTransactions.stream().<CashWithdrawalBalanceEntity>map(bt -> CashWithdrawalBalanceEntity.builder()
                 .total(bt.getAmount())
                 .balance(bt.getAmount())
                 .disbursementNumber(increment(counters, TenantPropety.DISBURSEMENT_COUNT))

@@ -62,7 +62,7 @@ public class PosTransactionService {
     }
 
     public void importPosStatements(List<BankTransactionEntity> bankTransactions) {
-        List<PosTransactionEntity> posTransactions = bankTransactions.stream().map(bt -> PosTransactionEntity.builder()
+        List<PosTransactionEntity> posTransactions = bankTransactions.stream().<PosTransactionEntity>map(bt -> PosTransactionEntity.builder()
                 .bankTransaction(BankTransactionEntity.builder().id(bt.getId()).build())
                 .build()).toList();
         posTransactionRepository.saveAll(posTransactions);

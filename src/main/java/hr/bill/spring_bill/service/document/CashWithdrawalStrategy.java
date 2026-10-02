@@ -1,7 +1,8 @@
 package hr.bill.spring_bill.service.document;
 
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
+import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.CashWithdrawalBalanceRepository;
 import hr.bill.spring_bill.dto.bill_pdf.request.DepositRequest;
 import hr.bill.spring_bill.dto.bill_pdf.request.DisbursementRequest;
@@ -37,7 +38,7 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
 
     private final BillPdfClient billPdfClient;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     @Override
     public BillReportType getType() {
@@ -46,6 +47,7 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Creating document for cash withdrawal {}", id);
         CashWithdrawalBalanceEntity entity = cashWithdrawalBalanceRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new NotFoundException("Cash withdrawal not found for id: " + id));
@@ -62,9 +64,9 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
                 .amount(formatAmount(entity.getTotal()))
                 .amountInWords(NumberToWordsService.asWords(entity.getTotal()))
                 .day(formatDate(entity.getBankTransaction().getTransactionDate()))
-                .place(supplierProperties.city())
+                .place(tenant.getCity())
                 .purpose("materijalni troškovi")
-                .recipientName(supplierProperties.contactName())
+                .recipientName(tenant.getContactName())
                 .year(formatYear(entity.getBankTransaction().getTransactionDate()))
                 .build());
         byte[] deposit = billPdfClient.renderDeposit(DepositRequest.builder()
@@ -73,7 +75,7 @@ public class CashWithdrawalStrategy implements DocumentStrategy {
                 .amountInWords(NumberToWordsService.asWords(entity.getTotal()))
                 .amountReceived("MASTERCARD")
                 .purpose("materijalni troškovi")
-                .place(supplierProperties.city())
+                .place(tenant.getCity())
                 .day(formatDate(entity.getBankTransaction().getTransactionDate()))
                 .year(formatYear(entity.getBankTransaction().getTransactionDate()))
                 .build());

@@ -1,6 +1,6 @@
 package hr.bill.spring_bill.mapper;
 
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.PaymentInfo;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.common.PaymentParty;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptDto;
@@ -13,11 +13,11 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", imports = HrPaymentReferenceService.class)
 public interface PaymentInfoMapper {
 
-    @Mapping(target = "payeeName", source = "supplier.name")
-    @Mapping(target = "payeeAddress", source = "supplier.street")
-    @Mapping(target = "payeeCity", source = "supplier.city")
-    @Mapping(target = "payeeZip", source = "supplier.postalZone")
-    @Mapping(target = "payeeIBAN", source = "supplier.iban")
+    @Mapping(target = "payeeName", source = "tenant.name")
+    @Mapping(target = "payeeAddress", source = "tenant.street")
+    @Mapping(target = "payeeCity", source = "tenant.city")
+    @Mapping(target = "payeeZip", source = "tenant.postalZone")
+    @Mapping(target = "payeeIBAN", source = "tenant.iban")
     @Mapping(target = "payerName", expression = "java(legalName(ublInvoice.getAccountingCustomerParty().getParty()))")
     @Mapping(target = "payerAddress", source = "ublInvoice.accountingCustomerParty.party.postalAddress.streetName")
     @Mapping(target = "payerCity", source = "ublInvoice.accountingCustomerParty.party.postalAddress.cityName")
@@ -27,36 +27,36 @@ public interface PaymentInfoMapper {
     @Mapping(target = "model", expression = "java(HrPaymentReferenceService.extractHrModel(ublInvoice.getPaymentMeans().getPaymentId()))")
     @Mapping(target = "referenceNumber", expression = "java(HrPaymentReferenceService.trimHrPrefix(ublInvoice.getPaymentMeans().getPaymentId()))")
     @Mapping(target = "description", expression = "java(\"račun \" + ublInvoice.getId())")
-    PaymentInfo toPaymentInfo(SupplierProperties supplier, UblInvoice ublInvoice);
+    PaymentInfo toPaymentInfo(TenantEntity tenant, UblInvoice ublInvoice);
 
     @Mapping(target = "payeeName", expression = "java(legalName(ublInvoice.getAccountingSupplierParty().getParty()))")
     @Mapping(target = "payeeAddress", source = "ublInvoice.accountingSupplierParty.party.postalAddress.streetName")
     @Mapping(target = "payeeCity", source = "ublInvoice.accountingSupplierParty.party.postalAddress.cityName")
     @Mapping(target = "payeeZip", source = "ublInvoice.accountingSupplierParty.party.postalAddress.postalZone")
     @Mapping(target = "payeeIBAN", source = "ublInvoice.paymentMeans.payeeFinancialAccount.id")
-    @Mapping(target = "payerName", source = "supplier.name")
-    @Mapping(target = "payerAddress", source = "supplier.street")
-    @Mapping(target = "payerCity", source = "supplier.city")
-    @Mapping(target = "payerZip", source = "supplier.postalZone")
+    @Mapping(target = "payerName", source = "tenant.name")
+    @Mapping(target = "payerAddress", source = "tenant.street")
+    @Mapping(target = "payerCity", source = "tenant.city")
+    @Mapping(target = "payerZip", source = "tenant.postalZone")
     @Mapping(target = "currency", source = "ublInvoice.documentCurrencyCode")
     @Mapping(target = "amount", expression = "java(Math.abs(new java.math.BigDecimal(ublInvoice.getLegalMonetaryTotal().getTaxInclusiveAmount().getValue()).doubleValue()))")
     @Mapping(target = "model", expression = "java(HrPaymentReferenceService.extractHrModel(ublInvoice.getPaymentMeans().getPaymentId()))")
     @Mapping(target = "referenceNumber", expression = "java(HrPaymentReferenceService.trimHrPrefix(ublInvoice.getPaymentMeans().getPaymentId()))")
     @Mapping(target = "description", expression = "java(\"račun \" + ublInvoice.getId())")
-    PaymentInfo toIngoingPaymentInfo(SupplierProperties supplier, UblInvoice ublInvoice);
+    PaymentInfo toIngoingPaymentInfo(TenantEntity tenant, UblInvoice ublInvoice);
 
-    @Mapping(target = "payeeName", source = "supplier.name")
-    @Mapping(target = "payeeAddress", source = "supplier.street")
-    @Mapping(target = "payeeCity", source = "supplier.city")
-    @Mapping(target = "payeeZip", source = "supplier.postalZone")
-    @Mapping(target = "payeeIBAN", source = "supplier.iban")
+    @Mapping(target = "payeeName", source = "tenant.name")
+    @Mapping(target = "payeeAddress", source = "tenant.street")
+    @Mapping(target = "payeeCity", source = "tenant.city")
+    @Mapping(target = "payeeZip", source = "tenant.postalZone")
+    @Mapping(target = "payeeIBAN", source = "tenant.iban")
     @Mapping(target = "payerName", source = "payer.name")
     @Mapping(target = "payerAddress", source = "payer.address")
     @Mapping(target = "payerCity", source = "payer.city")
     @Mapping(target = "payerZip", source = "payer.postalZone")
     @Mapping(target = "amount", expression = "java(Math.abs(amount))")
     PaymentInfo toPaymentInfo(
-            SupplierProperties supplier,
+            TenantEntity tenant,
             PaymentParty payer,
             String currency,
             Double amount,
@@ -65,11 +65,11 @@ public interface PaymentInfoMapper {
             String description
     );
 
-    @Mapping(target = "payeeName", source = "supplier.name")
-    @Mapping(target = "payeeAddress", source = "supplier.street")
-    @Mapping(target = "payeeCity", source = "supplier.city")
-    @Mapping(target = "payeeZip", source = "supplier.postalZone")
-    @Mapping(target = "payeeIBAN", source = "supplier.iban")
+    @Mapping(target = "payeeName", source = "tenant.name")
+    @Mapping(target = "payeeAddress", source = "tenant.street")
+    @Mapping(target = "payeeCity", source = "tenant.city")
+    @Mapping(target = "payeeZip", source = "tenant.postalZone")
+    @Mapping(target = "payeeIBAN", source = "tenant.iban")
     @Mapping(target = "payerName", source = "receiptDto.buyerName")
     @Mapping(target = "payerAddress", source = "receiptDto.buyerAddress")
     @Mapping(target = "payerCity", source = "receiptDto.buyerCity")
@@ -78,7 +78,7 @@ public interface PaymentInfoMapper {
     @Mapping(target = "amount", expression = "java(Math.abs(receiptDto.grandTotal()))")
     @Mapping(target = "referenceNumber", expression = "java(receiptDto.formattedReceiptNumber().replace('/', '-').replace('\\\\', '-'))")
     @Mapping(target = "description", expression = "java(\"račun \" + receiptDto.formattedReceiptNumber())")
-    PaymentInfo toPaymentInfo(SupplierProperties supplier, ReceiptDto receiptDto, String model);
+    PaymentInfo toPaymentInfo(TenantEntity tenant, ReceiptDto receiptDto, String model);
 
     default String legalName(UblParty p) {
         if (p == null) return "";

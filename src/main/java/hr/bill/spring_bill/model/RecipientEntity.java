@@ -2,22 +2,18 @@ package hr.bill.spring_bill.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.UUID;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "recipient")
+@Table(name = "recipient", uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "email"}))
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RecipientEntity {
+public class RecipientEntity extends TenantScopedEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email", nullable = false)
     private String email;
 }

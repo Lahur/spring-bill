@@ -64,6 +64,7 @@ public interface BillInfoEntityMapper {
     @Mapping(target = "vatInclusiveAmount", expression = "java(new BigDecimal(inv.getLegalMonetaryTotal().getTaxInclusiveAmount().getValue().trim()))")
     @Mapping(target = "advanceAmount", expression = "java(new BigDecimal(inv.getLegalMonetaryTotal().getPrepaidAmount().getValue().trim()))")
     @Mapping(target = "totalAmount", expression = "java(new BigDecimal(inv.getLegalMonetaryTotal().getPayableAmount().getValue().trim()))")
+    @Mapping(target = "tenantId", ignore = true)
     BillInfoEntity toBillInfoEntity(UblInvoice inv, UUID billId);
 
     @Mapping(target = "id", ignore = true)
@@ -76,6 +77,7 @@ public interface BillInfoEntityMapper {
     @Mapping(target = "baseAmount", expression = "java(new BigDecimal(line.getLineExtensionAmount().getValue().trim()))")
     @Mapping(target = "totalAmount", expression = "java(lineTotalAmount(line))")
     @Mapping(target = "vatCategory", expression = "java(VatCategory.fromId(line.getItem().getClassifiedTaxCategory().getId()))")
+    @Mapping(target = "tenantId", ignore = true)
     BillItemEntity toBillItemEntity(UblInvoiceLine line, UUID billInfoId);
 
     default List<BillItemEntity> toBillItemEntities(List<UblInvoiceLine> lines, UUID billInfoId) {

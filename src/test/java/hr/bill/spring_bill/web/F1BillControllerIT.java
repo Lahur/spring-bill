@@ -3,7 +3,6 @@ package hr.bill.spring_bill.web;
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
-import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.FiscalStatus;
 import hr.bill.spring_bill.dto.web.bill.info.BillDocumentKind;
@@ -43,8 +42,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class F1BillControllerIT extends AbstractIntegrationTest {
 
-    @Autowired
-    private SupplierProperties supplierProperties;
 
     @Autowired
     private BillRepository billRepository;
@@ -104,13 +101,13 @@ class F1BillControllerIT extends AbstractIntegrationTest {
                 (String) requestBody.get("buyerPostalCode"));
         SupplierInfo expectedSupplierInfo = new SupplierInfo(
                 "Mock Business d.o.o.", null,
-                supplierProperties.street(),
-                supplierProperties.city(),
-                supplierProperties.postalZone(),
-                supplierProperties.contactName(),
-                supplierProperties.contactOib(),
-                supplierProperties.email(),
-                supplierProperties.phone());
+                TEST_TENANT.street(),
+                TEST_TENANT.city(),
+                TEST_TENANT.postalZone(),
+                TEST_TENANT.contactName(),
+                TEST_TENANT.contactOib(),
+                TEST_TENANT.email(),
+                TEST_TENANT.phone());
         BillItemInfo expectedItemInfo = new BillItemInfo(
                 (String) requestBody.get("billItemName"),
                 (String) requestBody.get("billItemDescription"),
@@ -184,7 +181,7 @@ class F1BillControllerIT extends AbstractIntegrationTest {
         BillResponse created = createBill();
         billRepository.deleteById(created.id());
         BankTransactionEntity payment = seedBankTransaction(new BigDecimal("125.00"), CreditDebitIndicator.CRDT);
-        payment.setReceiverIban(supplierProperties.iban());
+        payment.setReceiverIban(TEST_TENANT.iban());
         payment.setReference(HrPaymentReferenceService.buildReference(created.fullBillId()));
         payment.setTransactionDate(LocalDateTime.now(CroatianTimeZone.ZONE));
         bankTransactionRepository.save(payment);

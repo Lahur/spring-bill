@@ -1,6 +1,6 @@
 package hr.bill.spring_bill.mapper;
 
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
 import hr.bill.spring_bill.dto.eposlovanje.enums.DocumentType;
 import hr.bill.spring_bill.dto.eposlovanje.enums.PaymentMeans;
 import hr.bill.spring_bill.dto.eposlovanje.enums.VatCategory;
@@ -40,12 +40,12 @@ public interface BillInfoMapper {
 
     @Mapping(target = "mainDataInfo", expression = "java(toMainDataInfo(r))")
     @Mapping(target = "buyerInfo", expression = "java(toBuyerInfo(r))")
-    @Mapping(target = "supplierInfo", expression = "java(toSupplierInfo(supplier, r))")
+    @Mapping(target = "supplierInfo", expression = "java(toSupplierInfo(tenant, r))")
     @Mapping(source = "r.items", target = "itemInfos")
     @Mapping(target = "paymentInfo", ignore = true)
     @Mapping(target = "fiscalInfo", expression = "java(toFiscalInfo(r))")
     @Mapping(target = "priceInfo", expression = "java(toPriceInfo(r))")
-    BillInfoResponse toBillInfoResponse(SupplierProperties supplier, ReceiptDto r);
+    BillInfoResponse toBillInfoResponse(TenantEntity tenant, ReceiptDto r);
 
     @Mapping(target = "mainDataInfo", expression = "java(toMainDataInfo(entity))")
     @Mapping(target = "buyerInfo", expression = "java(toBuyerInfo(entity))")
@@ -119,14 +119,14 @@ public interface BillInfoMapper {
 
     @Mapping(source = "r.businessName", target = "name")
     @Mapping(source = "r.businessOib", target = "oib")
-    @Mapping(source = "supplier.street", target = "address")
-    @Mapping(source = "supplier.city", target = "city")
-    @Mapping(source = "supplier.postalZone", target = "postalCode")
-    @Mapping(source = "supplier.contactName", target = "contactName")
-    @Mapping(source = "supplier.contactOib", target = "contactOib")
-    @Mapping(source = "supplier.email", target = "contactEmail")
-    @Mapping(source = "supplier.phone", target = "contactPhone")
-    SupplierInfo toSupplierInfo(SupplierProperties supplier, ReceiptDto r);
+    @Mapping(source = "tenant.street", target = "address")
+    @Mapping(source = "tenant.city", target = "city")
+    @Mapping(source = "tenant.postalZone", target = "postalCode")
+    @Mapping(source = "tenant.contactName", target = "contactName")
+    @Mapping(source = "tenant.contactOib", target = "contactOib")
+    @Mapping(source = "tenant.email", target = "contactEmail")
+    @Mapping(source = "tenant.phone", target = "contactPhone")
+    SupplierInfo toSupplierInfo(TenantEntity tenant, ReceiptDto r);
 
     @Mapping(source = "supplierName", target = "name")
     @Mapping(source = "supplierOib", target = "oib")

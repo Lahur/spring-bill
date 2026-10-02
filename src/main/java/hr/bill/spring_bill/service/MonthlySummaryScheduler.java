@@ -28,14 +28,20 @@ public class MonthlySummaryScheduler {
 
     private final List<BillStrategy> strategies;
 
+    private final TenantService tenantService;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         log.info("Application ready, running monthly summary backfill check");
-        backfillFromEarliestBills();
+        tenantService.forEachTenant("monthly summary backfill", this::backfillFromEarliestBills);
     }
 
     @Scheduled(cron = "${bill.schedule.monthly-summary-cron}")
     public void fillMissingMonths() {
+        tenantService.forEachTenant("monthly summary fill", this::fillMissingMonthsForTenant);
+    }
+
+    private void fillMissingMonthsForTenant() {
         LocalDate currentMonth = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
 
         LocalDate month = monthlySummaryRepository.findFirstByOrderByMonthDesc()

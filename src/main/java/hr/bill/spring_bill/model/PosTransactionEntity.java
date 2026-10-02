@@ -2,21 +2,17 @@ package hr.bill.spring_bill.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.UUID;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "pos_transaction")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PosTransactionEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class PosTransactionEntity extends TenantScopedEntity {
 
     @Column(name = "bill_path")
     private String billPath;

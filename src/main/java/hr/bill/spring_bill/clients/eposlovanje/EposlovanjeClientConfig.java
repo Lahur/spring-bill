@@ -1,16 +1,14 @@
 package hr.bill.spring_bill.clients.eposlovanje;
 
 import feign.RequestInterceptor;
-import org.springframework.beans.factory.annotation.Value;
+import hr.bill.spring_bill.model.TenantApiKeyEntity;
+import hr.bill.spring_bill.service.TenantApiKeyService;
 import org.springframework.context.annotation.Bean;
 
 public class EposlovanjeClientConfig {
 
-    @Value("${bill.eposlovanje.api-key}")
-    private String apiKey;
-
     @Bean
-    public RequestInterceptor eposlovanjeAuthInterceptor() {
-        return template -> template.header("Authorization", apiKey);
+    public RequestInterceptor eposlovanjeAuthInterceptor(TenantApiKeyService tenantApiKeyService) {
+        return template -> template.header("Authorization", tenantApiKeyService.require("eposlovanje", TenantApiKeyEntity::getEposlovanjeApiKey));
     }
 }

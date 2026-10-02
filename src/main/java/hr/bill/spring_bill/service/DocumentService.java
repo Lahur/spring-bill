@@ -1,5 +1,6 @@
 package hr.bill.spring_bill.service;
 
+import hr.bill.spring_bill.config.tenant.TenantContext;
 import hr.bill.spring_bill.clients.mail_bill.MailBillClient;
 import hr.bill.spring_bill.dto.mail_bill.request.MailFile;
 import hr.bill.spring_bill.dto.mail_bill.request.SendMailRequest;
@@ -174,9 +175,13 @@ public class DocumentService {
     }
 
     private void renderDocuments(List<SendBillReportItem> items, Path pdfsDir) {
+        // Rendering runs on pool threads, which don't inherit the request's tenant
+        UUID tenantId = TenantContext.require();
         List<Callable<Void>> renderTasks = items.stream()
                 .<Callable<Void>>map(item -> () -> {
-                    renderDocument(item, pdfsDir);
+                    try (TenantContext.Scope ignored = TenantContext.bind(tenantId)) {
+                        renderDocument(item, pdfsDir);
+                    }
                     return null;
                 })
                 .toList();

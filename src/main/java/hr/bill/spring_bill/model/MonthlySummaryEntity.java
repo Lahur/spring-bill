@@ -2,25 +2,22 @@ package hr.bill.spring_bill.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
-@Table(name = "monthly_summary")
+@Table(name = "monthly_summary", uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "month"}))
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MonthlySummaryEntity {
+public class MonthlySummaryEntity extends TenantScopedEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @Column(name = "month", nullable = false, unique = true)
+    @Column(name = "month", nullable = false)
     private LocalDate month;
 
     @Column(name = "sales_paid_total", nullable = false, precision = 19, scale = 2)

@@ -1,16 +1,14 @@
 package hr.bill.spring_bill.clients.f1_web;
 
 import feign.RequestInterceptor;
-import org.springframework.beans.factory.annotation.Value;
+import hr.bill.spring_bill.model.TenantApiKeyEntity;
+import hr.bill.spring_bill.service.TenantApiKeyService;
 import org.springframework.context.annotation.Bean;
 
 public class F1WebClientConfig {
 
-    @Value("${bill.f1-web.api-key}")
-    private String apiKey;
-
     @Bean
-    public RequestInterceptor f1WebAuthInterceptor() {
-        return template -> template.header("Authorization", apiKey);
+    public RequestInterceptor f1WebAuthInterceptor(TenantApiKeyService tenantApiKeyService) {
+        return template -> template.header("Authorization", tenantApiKeyService.require("F1 web", TenantApiKeyEntity::getF1WebApiKey));
     }
 }

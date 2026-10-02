@@ -2,7 +2,6 @@ package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
-import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillDocumentKind;
@@ -52,8 +51,6 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
     // when cancelling, so every bill created in this run needs its own never-before-used billId.
     private static final AtomicInteger NEXT_BILL_ID = new AtomicInteger((int) (System.currentTimeMillis() % 1_000_000) + 1);
 
-    @Autowired
-    private SupplierProperties supplierProperties;
 
     @Test
     void createsListsAndFetchesABill() throws Exception {
@@ -112,15 +109,15 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
                 (String) requestBody.get("buyerCity"),
                 (String) requestBody.get("buyerPostalZone"));
         SupplierInfo expectedSupplierInfo = new SupplierInfo(
-                supplierProperties.name(),
-                supplierProperties.oib(),
-                supplierProperties.street(),
-                supplierProperties.city(),
-                supplierProperties.postalZone(),
-                supplierProperties.contactName(),
-                supplierProperties.contactOib(),
-                supplierProperties.email(),
-                supplierProperties.phone());
+                TEST_TENANT.name(),
+                TEST_TENANT.oib(),
+                TEST_TENANT.street(),
+                TEST_TENANT.city(),
+                TEST_TENANT.postalZone(),
+                TEST_TENANT.contactName(),
+                TEST_TENANT.contactOib(),
+                TEST_TENANT.email(),
+                TEST_TENANT.phone());
         BillItemInfo expectedItemInfo = new BillItemInfo(
                 (String) requestBody.get("billItemName"),
                 (String) requestBody.get("billItemDescription"),
@@ -130,7 +127,7 @@ class F2ReportBillControllerIT extends AbstractIntegrationTest {
         PaymentInfo expectedPaymentInfo = new PaymentInfo(
                 BillPaymentMethod.CreditTransfer,
                 LocalDate.now().plusDays(15),
-                supplierProperties.iban(),
+                TEST_TENANT.iban(),
                 "HR00",
                 billId + "-1-1",
                 "račun " + billId + "/1/1");

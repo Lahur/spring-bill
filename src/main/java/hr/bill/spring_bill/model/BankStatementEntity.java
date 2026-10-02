@@ -2,24 +2,21 @@ package hr.bill.spring_bill.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "bank_statement")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BankStatementEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class BankStatementEntity extends TenantScopedEntity {
 
     @Column(name = "statement_id", nullable = false)
     private String statementId;

@@ -4,23 +4,20 @@ import hr.bill.spring_bill.dto.eposlovanje.enums.DocumentType;
 import hr.bill.spring_bill.dto.eposlovanje.enums.PaymentMeans;
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "bill_info")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BillInfoEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class BillInfoEntity extends TenantScopedEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "bill_id", nullable = false, unique = true)

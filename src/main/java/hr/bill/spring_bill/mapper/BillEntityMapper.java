@@ -29,6 +29,7 @@ public interface BillEntityMapper {
     @Mapping(source = "billType", target = "billType")
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(target = "paymentReference", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     BillEntity toBillEntity(DocumentStatusResponse dsr, BillType billType);
 
     default List<BillEntity> toBillEntityList(List<DocumentStatusResponse> dsrList, BillType billType) {
@@ -46,6 +47,7 @@ public interface BillEntityMapper {
     @Mapping(source = "billType", target = "billType")
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(target = "paymentReference", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     BillEntity toIngoingBillEntity(DocumentStatusResponse dsr, BillType billType);
 
     default List<BillEntity> toIngoingBillEntityList(List<DocumentStatusResponse> dsrList, BillType billType) {
@@ -63,6 +65,7 @@ public interface BillEntityMapper {
     @Mapping(source = "billType", target = "billType")
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(target = "paymentReference", expression = "java(HrPaymentReferenceService.buildReference(r.formattedReceiptNumber()))")
+    @Mapping(target = "tenantId", ignore = true)
     BillEntity toBillEntity(ReceiptDto r, BillType billType);
 
     @Mapping(target = "id", ignore = true)
@@ -76,6 +79,7 @@ public interface BillEntityMapper {
     @Mapping(source = "billType", target = "billType")
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(target = "paymentReference", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     BillEntity toBillEntity(ReportBillRequest r, BigDecimal totalAmount, BillType billType);
 
     BillResponse toBillResponse(BillEntity entity);

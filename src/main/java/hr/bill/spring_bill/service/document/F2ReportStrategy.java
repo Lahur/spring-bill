@@ -4,7 +4,8 @@ import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.clients.eposlovanje.EposlovanjeClient;
 import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
 import hr.bill.spring_bill.clients.eposlovanje_util.EposlovanjeUtilClient;
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
+import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.BillInfoRepository;
 import hr.bill.spring_bill.dao.BillItemRepository;
 import hr.bill.spring_bill.dao.BillRepository;
@@ -70,7 +71,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     private final UblXmlService ublXmlService;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     private final PaymentInfoMapper paymentInfoMapper;
 
@@ -114,12 +115,13 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Computing F2 report monthly totals for {}", monthStart);
         // F2_REPORT has no upstream source - sync() is a no-op for it and it's excluded from the
         // yearly deleteAllExceptReports() wipe, so the local table is the only place it ever lives.
         List<BillEntity> bills = repository.findAllByBillTypeAndBillDateBetween(
                 BillType.F2_REPORT.name(), monthStart.atStartOfDay(), monthStart.plusMonths(1).atStartOfDay());
-        Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, tenant.getIban());
         Set<String> paidBillSystemIds = paymentReferenceMatcher.paidBillSystemIds(bills.stream()
                 .map(BillEntity::getSystemId)
                 .filter(Objects::nonNull)
@@ -146,6 +148,7 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Creating document for F2 report bill {}", id);
         UUID billId = UUID.fromString(id);
         BillEntity billEntity = repository.findById(billId)
@@ -160,7 +163,7 @@ public class F2ReportStrategy implements BillStrategy {
                 .postalZone(billInfoEntity.getBuyerPostalCode())
                 .build();
         ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(
-                supplierProperties,
+                tenant,
                 buyerParty,
                 billInfoEntity.getCurrency(),
                 billInfoEntity.getVatInclusiveAmount().doubleValue(),
@@ -301,11 +304,12 @@ public class F2ReportStrategy implements BillStrategy {
 
     @Override
     public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
+        TenantEntity tenant = tenantService.get();
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F2_REPORT);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
             if (tx.getCreditDebitIndicator() != CreditDebitIndicator.CRDT) continue;
-            if (!supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban())) continue;
+            if (!tenant.getIban().equalsIgnoreCase(tx.getReceiverIban())) continue;
             for (BillEntity bill : candidates) {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
@@ -385,6 +389,7 @@ public class F2ReportStrategy implements BillStrategy {
     ) {}
 
     private UblInvoice toUblInvoice(ReportBillRequest request, ComputedAmounts computed) {
+        TenantEntity tenant = tenantService.get();
         DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss");
         return UblInvoice.builder()
@@ -416,7 +421,7 @@ public class F2ReportStrategy implements BillStrategy {
                                         .cityName(request.getBuyerCity())
                                         .postalZone(request.getBuyerPostalZone())
                                         .country(UblPostalAddress.Country.builder()
-                                                .identificationCode(supplierProperties.countryCode())
+                                                .identificationCode(tenant.getCountryCode())
                                                 .build())
                                         .build())
                                 .partyTaxScheme(UblPartyTaxScheme.builder()
@@ -436,7 +441,7 @@ public class F2ReportStrategy implements BillStrategy {
                         .instructionNote(String.format("račun %d/1/1", request.getBillId()))
                         .paymentId(computed.paymentId())
                         .payeeFinancialAccount(UblPaymentMeans.Account.builder()
-                                .id(supplierProperties.iban())
+                                .id(tenant.getIban())
                                 .currencyCode(computed.cur())
                                 .build())
                         .build())
@@ -615,41 +620,43 @@ public class F2ReportStrategy implements BillStrategy {
     }
 
     private UblAccountingSupplierParty buildSupplierParty() {
+        TenantEntity tenant = tenantService.get();
         return UblAccountingSupplierParty.builder()
                 .party(UblParty.builder()
-                        .endpointId(UblEndpointId.builder().schemeId("9934").value(supplierProperties.oib()).build())
-                        .partyName(UblPartyName.builder().name(supplierProperties.name()).build())
+                        .endpointId(UblEndpointId.builder().schemeId("9934").value(tenant.getOib()).build())
+                        .partyName(UblPartyName.builder().name(tenant.getName()).build())
                         .postalAddress(UblPostalAddress.builder()
-                                .streetName(supplierProperties.street())
-                                .cityName(supplierProperties.city())
-                                .postalZone(supplierProperties.postalZone())
+                                .streetName(tenant.getStreet())
+                                .cityName(tenant.getCity())
+                                .postalZone(tenant.getPostalZone())
                                 .country(UblPostalAddress.Country.builder()
-                                        .identificationCode(supplierProperties.countryCode())
+                                        .identificationCode(tenant.getCountryCode())
                                         .build())
                                 .build())
                         .partyTaxScheme(UblPartyTaxScheme.builder()
-                                .companyId("HR" + supplierProperties.oib())
+                                .companyId("HR" + tenant.getOib())
                                 .taxScheme(UblTaxScheme.vat())
                                 .build())
                         .partyLegalEntity(UblPartyLegalEntity.builder()
-                                .registrationName(supplierProperties.name())
-                                .companyId(supplierProperties.oib())
-                                .companyLegalForm(supplierProperties.name())
+                                .registrationName(tenant.getName())
+                                .companyId(tenant.getOib())
+                                .companyLegalForm(tenant.getName())
                                 .build())
                         .contact(UblContact.builder()
-                                .name(supplierProperties.contactName())
-                                .telephone(supplierProperties.phone())
-                                .electronicMail(supplierProperties.email())
+                                .name(tenant.getContactName())
+                                .telephone(tenant.getPhone())
+                                .electronicMail(tenant.getEmail())
                                 .build())
                         .build())
                 .sellerContact(UblSellerContact.builder()
-                        .id(supplierProperties.contactOib())
-                        .name(supplierProperties.contactName())
+                        .id(tenant.getContactOib())
+                        .name(tenant.getContactName())
                         .build())
                 .build();
     }
 
     private UblAdditionalDocumentReference.Attachment.EmbeddedDocumentBinaryObject createXmlReport(ReportBillRequest request, ComputedAmounts computedAmounts) {
+        TenantEntity tenant = tenantService.get();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy.");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         PaymentParty buyerParty = PaymentParty.builder()
@@ -659,7 +666,7 @@ public class F2ReportStrategy implements BillStrategy {
                 .postalZone(request.getBuyerPostalZone())
                 .build();
         ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(
-                supplierProperties,
+                tenant,
                 buyerParty,
                 computedAmounts.cur(),
                 new BigDecimal(computedAmounts.monetaryTotal().taxInclusiveAmount()).doubleValue(),

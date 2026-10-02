@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+// Native queries aren't covered by Hibernate's @TenantId filter, so each one filters on tenant_id itself.
 public interface BillRepository extends JpaRepository<BillEntity, UUID> {
 
     List<BillEntity> findAllByBillTypeOrderByBillDateDesc(BillType billType);
@@ -28,35 +29,35 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
     void deleteAllByBillType(BillType billType);
 
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM bill " +
-            "WHERE bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
             "AND document_status = 'PlacenUPotpunosti'", nativeQuery = true)
     BigDecimal sumPaidAmountByBillTypeNotAndBillDateBetween(@Param("billType") String billType,
                                                              @Param("from") LocalDateTime from,
                                                              @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM bill " +
-            "WHERE bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
             "AND (document_status IS NULL OR document_status <> 'PlacenUPotpunosti')", nativeQuery = true)
     BigDecimal sumUnpaidAmountByBillTypeNotAndBillDateBetween(@Param("billType") String billType,
                                                                @Param("from") LocalDateTime from,
                                                                @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM bill " +
-            "WHERE bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
             "AND document_status = 'PlacenUPotpunosti'", nativeQuery = true)
     BigDecimal sumPaidAmountByBillTypeAndBillDateBetween(@Param("billType") String billType,
                                                           @Param("from") LocalDateTime from,
                                                           @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM bill " +
-            "WHERE bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
             "AND (document_status IS NULL OR document_status <> 'PlacenUPotpunosti')", nativeQuery = true)
     BigDecimal sumUnpaidAmountByBillTypeAndBillDateBetween(@Param("billType") String billType,
                                                             @Param("from") LocalDateTime from,
                                                             @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT * FROM bill " +
-            "WHERE bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type = :billType AND bill_date >= :from AND bill_date < :to " +
             "ORDER BY bill_date DESC", nativeQuery = true)
     List<BillEntity> findAllByBillTypeAndBillDateBetween(@Param("billType") String billType,
                                                           @Param("from") LocalDateTime from,
@@ -72,7 +73,7 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
                                                                   @Param("to") LocalDateTime to);
 
     @Query(value = "SELECT CAST(bill_date AS date) AS day, COALESCE(SUM(total_amount), 0) AS total FROM bill " +
-            "WHERE bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
+            "WHERE tenant_id = :#{T(hr.bill.spring_bill.config.tenant.TenantContext).require()} AND bill_type <> :billType AND bill_date >= :from AND bill_date < :to " +
             "GROUP BY CAST(bill_date AS date)", nativeQuery = true)
     List<DailyTotalProjection> sumDailyTotalsByBillTypeNot(@Param("billType") String billType,
                                                             @Param("from") LocalDateTime from,

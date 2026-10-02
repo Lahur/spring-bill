@@ -3,7 +3,8 @@ package hr.bill.spring_bill.service.document;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.clients.eposlovanje_util.EposlovanjeUtilClient;
 import hr.bill.spring_bill.clients.f1_web.F1WebClient;
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
+import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje_util.response.ApiResponse;
@@ -68,7 +69,7 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     private final BillInfoMapper billInfoMapper;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     private final PaymentReferenceMatcher paymentReferenceMatcher;
 
@@ -115,13 +116,14 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public PaidUnpaidTotals getMonthlyTotals(LocalDate monthStart) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Computing F1 monthly totals for {}", monthStart);
         LocalDateTime from = monthStart.atStartOfDay();
         LocalDateTime to = monthStart.plusMonths(1).atStartOfDay();
         List<ReceiptSummaryDto> receipts = f1WebClient.getReceiptsByDateRange(
                 from.format(DateTimeFormatter.ISO_DATE_TIME),
                 to.format(DateTimeFormatter.ISO_DATE_TIME));
-        Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, supplierProperties.iban());
+        Set<String> paidReferences = paymentReferenceMatcher.paidReferences(CreditDebitIndicator.CRDT, tenant.getIban());
         Set<String> paidBillSystemIds = paymentReferenceMatcher.paidBillSystemIds(receipts.stream()
                 .map(r -> String.valueOf(r.id()))
                 .toList());
@@ -153,10 +155,11 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillDocument createDocument(String id) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Creating document for F1 bill {}", id);
         ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
         ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toPaymentInfo(
-                supplierProperties, receiptDto, "HR00"));
+                tenant, receiptDto, "HR00"));
 
         BillRequest billRequest = receiptBillRequestMapper.toBillRequest(receiptDto, apiResponse.message());
         return BillDocument.builder()
@@ -167,6 +170,7 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillResponse createBill(BaseBillRequest request) {
+        TenantEntity tenant = tenantService.get();
         if(request instanceof F1BillRequest f1BillRequest) {
             log.info("Creating F1 bill for buyer OIB {}", f1BillRequest.getBuyerOib());
             ReceiptDto receiptDto = f1WebClient.createReceipt(CreateReceiptDto.builder()
@@ -175,7 +179,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                             .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .paymentMethod(PaymentMethod.BankTransfer)
                     .receiptType(ReceiptType.Standard)
-                    .operatorOib(supplierProperties.contactOib())
+                    .operatorOib(tenant.getContactOib())
                     .notes(f1BillRequest.getNote() == null || f1BillRequest.getNote().isBlank() ? null : f1BillRequest.getNote())
                     // F1.Web's CreateReceiptDto.paymentDueDate is format: date-time (confirmed
                     // against the real API spec), and ReceiptDto.paymentDueDate on the way back
@@ -209,9 +213,10 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public BillInfoResponse getBillInfo(String id) {
+        TenantEntity tenant = tenantService.get();
         log.debug("Fetching bill info for F1 bill {}", id);
         ReceiptDto receiptDto = f1WebClient.getReceipt(Integer.parseInt(id));
-        return billInfoMapper.toBillInfoResponse(supplierProperties, receiptDto);
+        return billInfoMapper.toBillInfoResponse(tenant, receiptDto);
     }
 
     @Override
@@ -321,11 +326,12 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
+        TenantEntity tenant = tenantService.get();
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.F1_BILL);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
             if (tx.getCreditDebitIndicator() != CreditDebitIndicator.CRDT) continue;
-            if (!supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban())) continue;
+            if (!tenant.getIban().equalsIgnoreCase(tx.getReceiverIban())) continue;
             for (BillEntity bill : candidates) {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     bill.setDocumentStatus(BillDocumentStatus.PlacenUPotpunosti);
@@ -342,9 +348,10 @@ public class F1OutgoingStrategy implements BillStrategy {
 
     @Override
     public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        TenantEntity tenant = tenantService.get();
         List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
                 .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.CRDT)
-                .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getReceiverIban()))
+                .filter(tx -> tenant.getIban().equalsIgnoreCase(tx.getReceiverIban()))
                 .toList();
         if (candidates.isEmpty()) {
             return RemoteMatchResult.empty();

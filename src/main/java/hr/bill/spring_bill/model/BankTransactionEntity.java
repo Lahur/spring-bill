@@ -4,24 +4,21 @@ import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "bank_transaction")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BankTransactionEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class BankTransactionEntity extends TenantScopedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_statement_id", nullable = false)

@@ -2,16 +2,17 @@
 # dev server. Mirrors the property names Vault normally supplies (see vault/entrypoint.sh and
 # application-dev.yaml). The bill.eposlovanje/pondi/f1-web/ais-eposlovanje/hub/mail-bill base-urls below are
 # overridden at runtime by AbstractIntegrationTest's @DynamicPropertySource to point at the
-# eposlovanje-mock/hub-bill/mail-bill-test containers; the api-keys are unused by the mock (it
-# injects its own real ones) but are required here because they're read via strict @Value(...)
-# with no default — same for bill.path.* and every bill.schedule.* cron below (@Scheduled(cron =
-# "${...}") also resolves strictly), even though this test never triggers them.
+# eposlovanje-mock/hub-bill/mail-bill-test containers. API keys live per tenant in tenant_api_key
+# (seeded by AbstractIntegrationTest). bill.path.* and every bill.schedule.* cron below are read
+# strictly (@Value / @Scheduled(cron = "${...}")), so they're required even though tests don't
+# trigger the schedules.
 spring:
   cloud:
     vault:
       enabled: false
 
 bill:
+  api-key-encryption-key: "dGVzdC1vbmx5LWFwaS1rZXktZW5jcnlwdGlvbi1rZXk="
   path:
     pos: "/tmp/spring-bill-test/pos"
     accounts-statement: "/tmp/spring-bill-test/accounts-statement"
@@ -21,45 +22,14 @@ bill:
     monthly-summary-cron: "0 0 2 1 * *"
     bank-statement-cron: "0 0 3 * * *"
     sync-lookback-weeks: 156
-  supplier:
-    # Must be the real OIB the eposlovanje-mock sandbox account is registered under: on every UBL
-    # invoice send, Eposlovanje checks this against the sender identity tied to the mock's baked-in
-    # API key ("OIB pošiljatelja dokumenta (...) mora odgovarati
-    # Invoice/AccountingSupplierParty/Party/EndpointID elementu (...)") — a placeholder OIB, even a
-    # checksum-valid one, gets rejected with a 400.
-    oib: "31728187872"
-    name: "Test Supplier d.o.o."
-    street: "Test Street 1"
-    city: "Zagreb"
-    postal-zone: "10000"
-    country-code: "HR"
-    # Just needs to be a valid OIB for the contact/operator field on receipts and UBL sellerContact
-    # (F1OutgoingStrategy/F2OutgoingStrategy/F2ReportStrategy) — unlike bill.supplier.oib above,
-    # this isn't checked against the sandbox account's registered identity, so it's deliberately
-    # different here to reflect that it represents a distinct person, not the company itself.
-    contact-oib: "73660371074"
-    contact-name: "Test Contact"
-    phone: "+385000000000"
-    email: "test-supplier@example.com"
-    # Must match the account IBAN baked into src/test/resources/camt/bank-statement-*.xml, so
-    # BankStatementImportServiceIT's fixture entries are recognized as remote-match candidates.
-    iban: "HR8823600001109999001"
   hub-url: "http://localhost:9"
-  # hub-bill in AbstractIntegrationTest runs with no DB_HOST, so it has no tenant table to look up
-  # "tehnomodus" (or any tenant) against — a real x-tenant-id header 400s there (see
-  # BillPdfClientConfig). Blank disables the header, falling back to hub-bill's bundled templates.
-  hub-tenant-id: ""
   mail-bill:
     base-url: "http://localhost:9"
   eposlovanje:
     base-url: "http://localhost:9"
-    api-key: "test-eposlovanje-key"
   f1-web:
     base-url: "http://localhost:9"
-    api-key: "test-f1-web-key"
   pondi:
     base-url: "http://localhost:9"
-    api-key: "test-pondi-key"
   ais-eposlovanje:
     base-url: "http://localhost:9"
-    api-key: "test-ais-key"

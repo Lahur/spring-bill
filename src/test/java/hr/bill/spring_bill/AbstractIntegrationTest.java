@@ -20,13 +20,22 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import hr.bill.spring_bill.config.KeycloakRealmRoleConverter;
+import hr.bill.spring_bill.config.tenant.TenantContext;
+import hr.bill.spring_bill.config.tenant.TenantFilter;
 import hr.bill.spring_bill.dao.BankStatementRepository;
 import hr.bill.spring_bill.dao.BankTransactionRepository;
+import hr.bill.spring_bill.dto.web.tenant.TenantDto;
 import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.BillMaintenanceScheduler;
+import hr.bill.spring_bill.dto.web.tenant.TenantApiKeyRequest;
+import hr.bill.spring_bill.service.TenantApiKeyService;
+import hr.bill.spring_bill.service.TenantService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -122,10 +131,83 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected BankTransactionRepository bankTransactionRepository;
 
+    @Autowired
+    protected TenantService tenantService;
+
+    @Autowired
+    protected TenantApiKeyService tenantApiKeyService;
+
+    protected static final UUID TEST_TENANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+    protected static final TenantDto TEST_TENANT = TenantDto.builder()
+            // Must be the real OIB the eposlovanje-mock sandbox account is registered under: on every UBL
+            // invoice send, Eposlovanje checks this against the sender identity tied to the mock's baked-in
+            // API key ("OIB pošiljatelja dokumenta (...) mora odgovarati
+            // Invoice/AccountingSupplierParty/Party/EndpointID elementu (...)") — a placeholder OIB, even a
+            // checksum-valid one, gets rejected with a 400.
+            .oib("31728187872")
+            .name("Test Supplier d.o.o.")
+            .street("Test Street 1")
+            .city("Zagreb")
+            .postalZone("10000")
+            .countryCode("HR")
+            // Just needs to be a valid OIB for the contact/operator field on receipts and UBL sellerContact
+            // (F1OutgoingStrategy/F2OutgoingStrategy/F2ReportStrategy) — unlike oib above, this isn't
+            // checked against the sandbox account's registered identity, so it's deliberately different
+            // here to reflect that it represents a distinct person, not the company itself.
+            .contactOib("73660371074")
+            .contactName("Test Contact")
+            .phone("+385000000000")
+            .email("test-supplier@example.com")
+            // Must match the account IBAN baked into src/test/resources/camt/bank-statement-*.xml, so
+            // BankStatementImportServiceIT's fixture entries are recognized as remote-match candidates.
+            .iban("HR8823600001109999001")
+            .build();
+
+    private TenantContext.Scope tenantScope;
+
+    /** Binds TEST_TENANT_ID on the test thread so repositories used directly by tests see its rows. */
+    @BeforeEach
+    void bindAndSeedTenant() {
+        tenantScope = TenantContext.bind(TEST_TENANT_ID);
+        tenantService.save(TEST_TENANT);
+        // The eposlovanje-mock ignores these and injects its own real keys, but every Feign call
+        // still requires the tenant to have one.
+        tenantApiKeyService.save(TenantApiKeyRequest.builder()
+                .eposlovanjeApiKey("test-eposlovanje-key")
+                .f1WebApiKey("test-f1-web-key")
+                .pondiApiKey("test-pondi-key")
+                .aisEposlovanjeApiKey("test-ais-key")
+                // No hubTenantId: hub-bill here runs with no DB_HOST, so it has no tenant table and a
+                // real x-tenant-id 400s (see BillPdfClientConfig); without it hub-bill uses its bundled templates.
+                .build());
+    }
+
+    @AfterEach
+    void unbindTenant() {
+        tenantScope.close();
+    }
+
     protected final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
+    /** An authenticated request for TEST_TENANT_ID. */
     protected static RequestPostProcessor jwt() {
-        return SecurityMockMvcRequestPostProcessors.jwt();
+        return jwtFor(TEST_TENANT_ID);
+    }
+
+    /** An authenticated request for {@code tenantId}. */
+    protected static RequestPostProcessor jwtFor(UUID tenantId) {
+        return request -> {
+            request.addHeader(TenantFilter.HEADER, tenantId.toString());
+            return SecurityMockMvcRequestPostProcessors.jwt().postProcessRequest(request);
+        };
+    }
+
+    /** An authenticated request carrying the ADMIN realm role, with no tenant header (the tenant API takes it from the path). */
+    protected static RequestPostProcessor adminJwt() {
+        return SecurityMockMvcRequestPostProcessors.jwt()
+                .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("ADMIN"))))
+                .authorities(new KeycloakRealmRoleConverter());
     }
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();

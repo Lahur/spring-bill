@@ -4,7 +4,8 @@ import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.clients.eposlovanje.EposlovanjeClient;
 import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
 import hr.bill.spring_bill.clients.eposlovanje_util.EposlovanjeUtilClient;
-import hr.bill.spring_bill.config.SupplierProperties;
+import hr.bill.spring_bill.model.TenantEntity;
+import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.bill_pdf.request.IncomingInvoiceRequest;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.common.DocumentStatus;
@@ -63,7 +64,7 @@ public class IngoingStrategy implements BillStrategy {
 
     private final UblXmlService ublXmlService;
 
-    private final SupplierProperties supplierProperties;
+    private final TenantService tenantService;
 
     @Value("${bill.schedule.sync-lookback-weeks}")
     private long syncLookbackWeeks;
@@ -172,7 +173,8 @@ public class IngoingStrategy implements BillStrategy {
     }
 
     private Optional<String> generatePdf417(UblInvoice ublInvoice) {
-        ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toIngoingPaymentInfo(supplierProperties, ublInvoice));
+        TenantEntity tenant = tenantService.get();
+        ApiResponse apiResponse = eposlovanjeUtilClient.generatePdf417(paymentInfoMapper.toIngoingPaymentInfo(tenant, ublInvoice));
         return Optional.ofNullable(apiResponse.message());
     }
 
@@ -301,11 +303,12 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public int markPaidFromBankStatement(List<BankTransactionEntity> transactions) {
+        TenantEntity tenant = tenantService.get();
         List<BillEntity> candidates = repository.findAllByBillTypeOrderByBillDateDesc(BillType.INGOING_BILL);
         int updated = 0;
         for (BankTransactionEntity tx : transactions) {
             if (tx.getCreditDebitIndicator() != CreditDebitIndicator.DBIT) continue;
-            if (!supplierProperties.iban().equalsIgnoreCase(tx.getSenderIban())) continue;
+            if (!tenant.getIban().equalsIgnoreCase(tx.getSenderIban())) continue;
             for (BillEntity bill : candidates) {
                 if (HrPaymentReferenceService.matches(tx.getReference(), expectedReference(bill))) {
                     if(!bill.getDocumentStatus().equals(BillDocumentStatus.PlacenUPotpunosti)) {
@@ -328,9 +331,10 @@ public class IngoingStrategy implements BillStrategy {
 
     @Override
     public RemoteMatchResult matchBillSystemIdsFromRemote(List<BankTransactionEntity> unresolvedTransactions, LocalDate from, LocalDate to) {
+        TenantEntity tenant = tenantService.get();
         List<BankTransactionEntity> candidates = unresolvedTransactions.stream()
                 .filter(tx -> tx.getCreditDebitIndicator() == CreditDebitIndicator.DBIT)
-                .filter(tx -> supplierProperties.iban().equalsIgnoreCase(tx.getSenderIban()))
+                .filter(tx -> tenant.getIban().equalsIgnoreCase(tx.getSenderIban()))
                 .toList();
         if (candidates.isEmpty()) {
             return RemoteMatchResult.empty();

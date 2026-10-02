@@ -9,10 +9,11 @@ import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
 import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
+import hr.bill.spring_bill.model.enums.TenantPropety;
 import hr.bill.spring_bill.service.BankStatementScheduler;
+import hr.bill.spring_bill.service.TenantPropertyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
@@ -59,8 +60,8 @@ class BankStatementFetchIT extends AbstractIntegrationTest {
     @Autowired
     private BankStatementScheduler bankStatementScheduler;
 
-    @Value("${bill.supplier.iban}")
-    private String supplierIban;
+    @Autowired
+    private TenantPropertyService tenantPropertyService;
 
     @Test
     void fetchingSavesOneStatementPerBookingDayWithTheMockTransactions() throws Exception {
@@ -82,7 +83,7 @@ class BankStatementFetchIT extends AbstractIntegrationTest {
             List<JsonNode> dayExpected = expectedByDay.get(day);
             assertThat(statement.periodTo()).isEqualTo(day);
             assertThat(statement.statementId())
-                    .isEqualTo(supplierIban + "-" + day.format(DateTimeFormatter.BASIC_ISO_DATE));
+                    .isEqualTo(TEST_TENANT.iban() + "-" + day.format(DateTimeFormatter.BASIC_ISO_DATE));
 
             List<BankTransactionEntity> saved =
                     bankTransactionRepository.findAllByBankStatement_IdOrderByTransactionDateAsc(statement.id());
@@ -168,16 +169,16 @@ class BankStatementFetchIT extends AbstractIntegrationTest {
         LocalDate yesterday = LocalDate.now(ZoneId.of("Europe/Zagreb")).minusDays(1);
         // The mock only has a day's transactions as booked once that UTC day is over; weekends often have none.
         boolean mockHasYesterday = !mockBookedTransactionsByDay(yesterday, yesterday).isEmpty();
-        String statementId = supplierIban + "-" + yesterday.format(DateTimeFormatter.BASIC_ISO_DATE);
+        String statementId = TEST_TENANT.iban() + "-" + yesterday.format(DateTimeFormatter.BASIC_ISO_DATE);
         long mailCountBefore = mailhogMessagesTo(RECIPIENT_EMAIL);
 
         ReflectionTestUtils.setField(bankStatementScheduler, "mailEnabled", true);
-        ReflectionTestUtils.setField(bankStatementScheduler, "mailTo", RECIPIENT_EMAIL);
+        tenantPropertyService.save(TenantPropety.STATEMENT_MAIL_TO, RECIPIENT_EMAIL);
         try {
             bankStatementScheduler.importPreviousDay();
         } finally {
             ReflectionTestUtils.setField(bankStatementScheduler, "mailEnabled", false);
-            ReflectionTestUtils.setField(bankStatementScheduler, "mailTo", "");
+            tenantPropertyService.save(TenantPropety.STATEMENT_MAIL_TO, null);
         }
 
         assertThat(bankStatementRepository.existsByStatementId(statementId)).isEqualTo(mockHasYesterday);

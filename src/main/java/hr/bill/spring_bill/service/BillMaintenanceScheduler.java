@@ -19,22 +19,35 @@ public class BillMaintenanceScheduler {
 
     private final List<BillStrategy> strategies;
 
+    private final TenantService tenantService;
+
     @Value("${bill.schedule.delete-on-startup}")
     private boolean deleteOnStartup;
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         log.info("Application ready, running startup bill maintenance");
-        if (deleteOnStartup) {
-            deleteAllExceptReports();
-        } else {
-            log.info("Skipping startup deletion, bill.schedule.delete-on-startup is false");
-        }
-        syncAll();
+        tenantService.forEachTenant("startup bill maintenance", () -> {
+            if (deleteOnStartup) {
+                deleteAllExceptReportsForTenant();
+            } else {
+                log.info("Skipping startup deletion, bill.schedule.delete-on-startup is false");
+            }
+            syncAllForTenant();
+        });
     }
 
     @Scheduled(cron = "${bill.schedule.sync-cron}")
     public void syncAll() {
+        tenantService.forEachTenant("bill sync", this::syncAllForTenant);
+    }
+
+    @Scheduled(cron = "${bill.schedule.delete-cron}")
+    public void deleteAllExceptReports() {
+        tenantService.forEachTenant("bill deletion", this::deleteAllExceptReportsForTenant);
+    }
+
+    private void syncAllForTenant() {
         log.info("Syncing {} bill strategy/strategies", strategies.size());
         strategies.forEach(strategy -> {
             log.debug("Syncing strategy {}", strategy.getType());
@@ -43,8 +56,7 @@ public class BillMaintenanceScheduler {
         log.info("Finished syncing bill strategies");
     }
 
-    @Scheduled(cron = "${bill.schedule.delete-cron}")
-    public void deleteAllExceptReports() {
+    private void deleteAllExceptReportsForTenant() {
         log.info("Deleting all bills except {} strategy", BillReportType.F2_REPORT);
         strategies.stream()
                 .filter(strategy -> strategy.getType() != BillReportType.F2_REPORT)

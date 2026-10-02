@@ -5,6 +5,9 @@ management:
         include: health,prometheus
 
 spring:
+  flyway:
+    placeholders:
+      default_tenant_id: 20c6abe6-01f3-4056-8d1c-a4b3130facd6
   servlet:
     multipart:
       max-file-size: 5MB
@@ -15,4 +18,3 @@ bill:
   statement:
     remote-match-lookback-months: 6
     mail-enabled: false
-    mail-to: ""

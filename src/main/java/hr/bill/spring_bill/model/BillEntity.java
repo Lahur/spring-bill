@@ -4,23 +4,20 @@ import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
 import jakarta.persistence.*;
 import lombok.*;
+import hr.bill.spring_bill.model.superclass.TenantScopedEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
-@Table(name = "bill", uniqueConstraints = @UniqueConstraint(columnNames = {"system_id", "bill_type"}))
+@Table(name = "bill", uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "system_id", "bill_type"}))
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BillEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class BillEntity extends TenantScopedEntity {
 
     @Column(name = "system_id", nullable = false)
     private Long systemId;

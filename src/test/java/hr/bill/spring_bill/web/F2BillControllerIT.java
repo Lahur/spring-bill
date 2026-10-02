@@ -2,7 +2,6 @@ package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
-import hr.bill.spring_bill.config.SupplierProperties;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.web.BusinessCheckResponse;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
@@ -51,8 +50,6 @@ class F2BillControllerIT extends AbstractIntegrationTest {
 
     private static final AtomicInteger NEXT_BILL_ID = new AtomicInteger((int) (System.currentTimeMillis() % 1_000_000) + 1);
 
-    @Autowired
-    private SupplierProperties supplierProperties;
 
     @Autowired
     private BillRepository billRepository;
@@ -94,7 +91,7 @@ class F2BillControllerIT extends AbstractIntegrationTest {
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsByteArray(), BillInfoResponse.class);
         // getBillInfo parses the UBL invoice back from the sandbox, which is what we generated and
-        // sent — every field of it (buyer/supplier from businessEntity/supplierProperties, the single
+        // sent — every field of it (buyer/supplier from businessEntity/TEST_TENANT, the single
         // item, payment means, price totals) is therefore derivable from the request/config, so the
         // whole response is compared in one go rather than spot-checking individual fields.
         MainDataInfo expectedMainDataInfo = new MainDataInfo(
@@ -114,15 +111,15 @@ class F2BillControllerIT extends AbstractIntegrationTest {
                 buyer.businessEntity().headquatersCity(),
                 buyer.businessEntity().headquatersZip());
         SupplierInfo expectedSupplierInfo = new SupplierInfo(
-                supplierProperties.name(),
-                "HR" + supplierProperties.oib(),
-                supplierProperties.street(),
-                supplierProperties.city(),
-                supplierProperties.postalZone(),
-                supplierProperties.contactName(),
-                supplierProperties.contactOib(),
-                supplierProperties.email(),
-                supplierProperties.phone());
+                TEST_TENANT.name(),
+                "HR" + TEST_TENANT.oib(),
+                TEST_TENANT.street(),
+                TEST_TENANT.city(),
+                TEST_TENANT.postalZone(),
+                TEST_TENANT.contactName(),
+                TEST_TENANT.contactOib(),
+                TEST_TENANT.email(),
+                TEST_TENANT.phone());
         BillItemInfo expectedItemInfo = new BillItemInfo(
                 "Test item", "Test item description",
                 BigDecimal.ONE, ItemUnitOfMeasure.H87,
@@ -131,7 +128,7 @@ class F2BillControllerIT extends AbstractIntegrationTest {
         PaymentInfo expectedPaymentInfo = new PaymentInfo(
                 BillPaymentMethod.CreditTransfer,
                 LocalDate.now(CroatianTimeZone.ZONE).plusDays(15),
-                supplierProperties.iban(),
+                TEST_TENANT.iban(),
                 "HR00",
                 billId + "-1-1",
                 "račun " + billId + "/1/1");
@@ -195,7 +192,7 @@ class F2BillControllerIT extends AbstractIntegrationTest {
         BillResponse created = createBill();
         billRepository.deleteById(created.id());
         BankTransactionEntity payment = seedBankTransaction(new BigDecimal("125.00"), CreditDebitIndicator.CRDT);
-        payment.setReceiverIban(supplierProperties.iban());
+        payment.setReceiverIban(TEST_TENANT.iban());
         payment.setReference(HrPaymentReferenceService.buildReference(created.fullBillId()));
         payment.setTransactionDate(LocalDateTime.now(CroatianTimeZone.ZONE));
         bankTransactionRepository.save(payment);
