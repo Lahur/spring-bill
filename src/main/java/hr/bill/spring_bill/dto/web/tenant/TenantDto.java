@@ -5,9 +5,15 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
+import java.util.UUID;
+
 @Builder
 @Schema(description = "Tenant (bill issuer) data used on outgoing bills and bank statements")
 public record TenantDto(
+
+        @Schema(description = "Tenant id, generated on create; send it in the X-Tenant-Id header and the /tenant/{tenantId} path",
+                accessMode = Schema.AccessMode.READ_ONLY)
+        UUID id,
 
         @Schema(description = "Company OIB", example = "12345678901")
         @NotBlank(message = "OIB can't be blank")

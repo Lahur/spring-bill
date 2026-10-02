@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * Binds the {@value #HEADER} request header to {@link TenantContext} for the whole request. Ordered
  * after Spring Security's filter chain (-100) so unauthenticated requests still get a 401, not a 400.
- * {@code /tenant/{tenantId}} is excluded: the admin tenant API takes the tenant from the path and binds it itself.
+ * The admin tenant API ({@value #TENANT_API}) is excluded: create needs no tenant, the rest take it from the path.
  */
 @Component
 @Order(0)
@@ -24,13 +24,15 @@ public class TenantFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Tenant-Id";
 
-    private static final List<String> EXCLUDED_PREFIXES = List.of(
-            "/actuator", "/swagger-ui", "/v3/api-docs", "/scalar", "/tenant/");
+    private static final String TENANT_API = "/tenant";
+
+    private static final List<String> EXCLUDED_PREFIXES = List.of("/actuator", "/swagger-ui", "/v3/api-docs", "/scalar");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        return EXCLUDED_PREFIXES.stream().anyMatch(path::startsWith);
+        return path.equals(TENANT_API) || path.startsWith(TENANT_API + "/")
+                || EXCLUDED_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     @Override

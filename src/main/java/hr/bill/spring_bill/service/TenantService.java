@@ -29,15 +29,25 @@ public class TenantService {
                 .orElseThrow(() -> new NotFoundException("Tenant " + tenantId + " is not configured"));
     }
 
+    /** Creates a new tenant with a generated id; no tenant needs to be bound. */
     @Transactional
-    public TenantEntity save(TenantDto dto) {
-        UUID tenantId = TenantContext.require();
-        log.debug("Saving tenant {} with OIB {}", tenantId, dto.oib());
-        TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseGet(() -> TenantEntity.builder().id(tenantId).build());
+    public TenantEntity create(TenantDto dto) {
+        log.debug("Creating tenant with OIB {}", dto.oib());
+        TenantEntity entity = TenantEntity.builder().id(UUID.randomUUID()).build();
         tenantMapper.updateTenantEntity(dto, entity);
         TenantEntity saved = tenantRepository.save(entity);
-        log.debug("Saved tenant {}", saved.getId());
+        log.debug("Created tenant {}", saved.getId());
+        return saved;
+    }
+
+    /** Replaces the current tenant's data; 404 if it doesn't exist. */
+    @Transactional
+    public TenantEntity update(TenantDto dto) {
+        TenantEntity entity = get();
+        log.debug("Updating tenant {} with OIB {}", entity.getId(), dto.oib());
+        tenantMapper.updateTenantEntity(dto, entity);
+        TenantEntity saved = tenantRepository.save(entity);
+        log.debug("Updated tenant {}", saved.getId());
         return saved;
     }
 

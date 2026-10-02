@@ -23,11 +23,11 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 @RestController
-@RequestMapping("/tenant/{tenantId}")
+@RequestMapping("/tenant")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Tenant", description = "Admin endpoints for a tenant's (issuer) data used on bills")
-/** Not behind {@code TenantFilter}: each endpoint binds the {@code tenantId} path variable itself. */
+/** Not behind {@code TenantFilter}: create needs no tenant, the rest bind the {@code tenantId} path variable themselves. */
 public class TenantController {
 
     private final TenantService tenantService;
@@ -35,7 +35,7 @@ public class TenantController {
     private final TenantApiKeyService tenantApiKeyService;
     private final TenantPropertyService tenantPropertyService;
 
-    @GetMapping
+    @GetMapping("/{tenantId}")
     @Operation(summary = "Get the tenant")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tenant retrieved successfully"),
@@ -46,18 +46,31 @@ public class TenantController {
         return asTenant(tenantId, () -> tenantMapper.toTenantDto(tenantService.get()));
     }
 
-    @PutMapping
-    @Operation(summary = "Create or replace the tenant")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a new tenant; the response carries its generated id")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Tenant saved successfully"),
+            @ApiResponse(responseCode = "201", description = "Tenant created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid tenant data"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public TenantDto save(@PathVariable UUID tenantId, @RequestBody @Validated TenantDto request) {
-        return asTenant(tenantId, () -> tenantMapper.toTenantDto(tenantService.save(request)));
+    public TenantDto create(@RequestBody @Validated TenantDto request) {
+        return tenantMapper.toTenantDto(tenantService.create(request));
     }
 
-    @PutMapping("/api-key")
+    @PutMapping("/{tenantId}")
+    @Operation(summary = "Replace an existing tenant's data")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tenant updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid tenant data"),
+            @ApiResponse(responseCode = "404", description = "Tenant doesn't exist"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public TenantDto update(@PathVariable UUID tenantId, @RequestBody @Validated TenantDto request) {
+        return asTenant(tenantId, () -> tenantMapper.toTenantDto(tenantService.update(request)));
+    }
+
+    @PutMapping("/{tenantId}/api-key")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Replace the tenant's API keys for the external clients (keys are write-only)")
     @ApiResponses({
@@ -68,7 +81,7 @@ public class TenantController {
         TenantContext.runAs(tenantId, () -> tenantApiKeyService.save(request));
     }
 
-    @GetMapping("/statement-mail-to")
+    @GetMapping("/{tenantId}/statement-mail-to")
     @Operation(summary = "Get where the tenant's imported bank statements are mailed")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Statement mail-to retrieved successfully"),
@@ -79,7 +92,7 @@ public class TenantController {
                 new StatementMailToDto(tenantPropertyService.find(TenantPropety.STATEMENT_MAIL_TO).orElse(null)));
     }
 
-    @PutMapping("/statement-mail-to")
+    @PutMapping("/{tenantId}/statement-mail-to")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Set where the tenant's imported bank statements are mailed (blank clears it)")
     @ApiResponses({

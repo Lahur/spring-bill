@@ -2,7 +2,6 @@ package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.dao.TenantApiKeyRepository;
-import hr.bill.spring_bill.dao.TenantRepository;
 import hr.bill.spring_bill.dto.web.tenant.TenantDto;
 import hr.bill.spring_bill.model.TenantEntity;
 import org.junit.jupiter.api.Test;
@@ -14,6 +13,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,9 +25,6 @@ class TenantControllerIT extends AbstractIntegrationTest {
     private static final String TENANT_URL = "/tenant/" + TEST_TENANT_ID;
 
     @Autowired
-    private TenantRepository tenantRepository;
-
-    @Autowired
     private TenantApiKeyRepository tenantApiKeyRepository;
 
     @Test
@@ -36,40 +33,13 @@ class TenantControllerIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray(), TenantDto.class);
 
-        assertThat(tenant).isEqualTo(TEST_TENANT);
+        assertThat(tenant.id()).isEqualTo(TEST_TENANT_ID);
+        assertThat(tenant).usingRecursiveComparison().ignoringFields("id").isEqualTo(TEST_TENANT);
     }
 
     @Test
-    void putReplacesTheCurrentTenantsRow() throws Exception {
-        TenantDto updated = TenantDto.builder()
-                .oib(TEST_TENANT.oib())
-                .name("Renamed d.o.o.")
-                .street("New Street 2")
-                .city("Split")
-                .postalZone("21000")
-                .countryCode("HR")
-                .contactOib(TEST_TENANT.contactOib())
-                .contactName("New Contact")
-                .phone(null)
-                .email(null)
-                .iban(TEST_TENANT.iban())
-                .build();
-
-        TenantDto response = objectMapper.readValue(mockMvc.perform(put(TENANT_URL).with(adminJwt())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updated)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsByteArray(), TenantDto.class);
-
-        assertThat(response).isEqualTo(updated);
-        assertThat(tenantRepository.findById(TEST_TENANT_ID)).get()
-                .extracting(TenantEntity::getName).isEqualTo("Renamed d.o.o.");
-    }
-
-    @Test
-    void putCreatesANewTenantWithoutTenantHeader() throws Exception {
-        UUID newTenantId = UUID.randomUUID();
-        TenantDto created = TenantDto.builder()
+    void postCreatesANewTenantWithAGeneratedId() throws Exception {
+        TenantDto request = TenantDto.builder()
                 .oib(TEST_TENANT.oib())
                 .name("New Tenant d.o.o.")
                 .street(TEST_TENANT.street())
@@ -81,21 +51,58 @@ class TenantControllerIT extends AbstractIntegrationTest {
                 .iban(TEST_TENANT.iban())
                 .build();
 
-        mockMvc.perform(put("/tenant/" + newTenantId).with(adminJwt())
+        TenantDto response = objectMapper.readValue(mockMvc.perform(post("/tenant").with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(created)))
-                .andExpect(status().isOk());
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsByteArray(), TenantDto.class);
 
-        assertThat(tenantRepository.findById(newTenantId)).get()
+        assertThat(response.id()).isNotNull().isNotEqualTo(TEST_TENANT_ID);
+        assertThat(response).usingRecursiveComparison().ignoringFields("id").isEqualTo(request);
+        assertThat(tenantRepository.findById(response.id())).get()
                 .extracting(TenantEntity::getName).isEqualTo("New Tenant d.o.o.");
-        tenantRepository.deleteById(newTenantId);
+        tenantRepository.deleteById(response.id());
     }
 
     @Test
-    void putRejectsBlankRequiredFields() throws Exception {
+    void putUpdatesTheTenant() throws Exception {
+        TenantDto updated = TenantDto.builder()
+                .oib(TEST_TENANT.oib())
+                .name("Renamed d.o.o.")
+                .street("New Street 2")
+                .city("Split")
+                .postalZone("21000")
+                .countryCode("HR")
+                .contactOib(TEST_TENANT.contactOib())
+                .contactName("New Contact")
+                .iban(TEST_TENANT.iban())
+                .build();
+
+        TenantDto response = objectMapper.readValue(mockMvc.perform(put(TENANT_URL).with(adminJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updated)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray(), TenantDto.class);
+
+        assertThat(response.id()).isEqualTo(TEST_TENANT_ID);
+        assertThat(response).usingRecursiveComparison().ignoringFields("id").isEqualTo(updated);
+        assertThat(tenantRepository.findById(TEST_TENANT_ID)).get()
+                .extracting(TenantEntity::getName).isEqualTo("Renamed d.o.o.");
+    }
+
+    @Test
+    void putUnknownTenantIsNotFound() throws Exception {
+        mockMvc.perform(put("/tenant/" + UUID.randomUUID()).with(adminJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(TEST_TENANT)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void postRejectsBlankRequiredFields() throws Exception {
         TenantDto invalid = TenantDto.builder().oib("").build();
 
-        mockMvc.perform(put(TENANT_URL).with(adminJwt())
+        mockMvc.perform(post("/tenant").with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalid)))
                 .andExpect(status().isBadRequest());

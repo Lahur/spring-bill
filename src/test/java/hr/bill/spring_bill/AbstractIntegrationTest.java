@@ -33,7 +33,9 @@ import hr.bill.spring_bill.model.enums.CreditDebitIndicator;
 import hr.bill.spring_bill.service.BillMaintenanceScheduler;
 import hr.bill.spring_bill.dto.web.tenant.TenantApiKeyRequest;
 import hr.bill.spring_bill.service.TenantApiKeyService;
-import hr.bill.spring_bill.service.TenantService;
+import hr.bill.spring_bill.dao.TenantRepository;
+import hr.bill.spring_bill.mapper.TenantMapper;
+import hr.bill.spring_bill.model.TenantEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -132,7 +134,10 @@ public abstract class AbstractIntegrationTest {
     protected BankTransactionRepository bankTransactionRepository;
 
     @Autowired
-    protected TenantService tenantService;
+    protected TenantRepository tenantRepository;
+
+    @Autowired
+    private TenantMapper tenantMapper;
 
     @Autowired
     protected TenantApiKeyService tenantApiKeyService;
@@ -170,7 +175,10 @@ public abstract class AbstractIntegrationTest {
     @BeforeEach
     void bindAndSeedTenant() {
         tenantScope = TenantContext.bind(TEST_TENANT_ID);
-        tenantService.save(TEST_TENANT);
+        TenantEntity tenant = tenantRepository.findById(TEST_TENANT_ID)
+                .orElseGet(() -> TenantEntity.builder().id(TEST_TENANT_ID).build());
+        tenantMapper.updateTenantEntity(TEST_TENANT, tenant);
+        tenantRepository.save(tenant);
         // The eposlovanje-mock ignores these and injects its own real keys, but every Feign call
         // still requires the tenant to have one.
         tenantApiKeyService.save(TenantApiKeyRequest.builder()
