@@ -16,7 +16,9 @@ import java.util.UUID;
 /**
  * Binds the {@value #HEADER} request header to {@link TenantContext} for the whole request. Ordered
  * after Spring Security's filter chain (-100) so unauthenticated requests still get a 401, not a 400.
- * The admin tenant API ({@value #TENANT_API}) is excluded: create needs no tenant, the rest take it from the path.
+ * The admin tenant API ({@value #TENANT_API}) ignores the header: {@code POST /tenant} needs no tenant and
+ * {@code /tenant/{tenantId}/**} binds the path id. Binding here, not in the controller, matters: open-in-view opens
+ * the Hibernate session (and fixes its tenant) before the controller runs.
  */
 @Component
 @Order(0)
@@ -30,14 +32,25 @@ public class TenantFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        return path.equals(TENANT_API) || path.startsWith(TENANT_API + "/")
-                || EXCLUDED_PREFIXES.stream().anyMatch(path::startsWith);
+        String path = path(request);
+        return path.equals(TENANT_API) || EXCLUDED_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+        String path = path(request);
+        if (path.startsWith(TENANT_API + "/")) {
+            Optional<UUID> tenantId = parseTenantId(path.substring(TENANT_API.length() + 1).split("/", 2)[0]);
+            if (tenantId.isEmpty()) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Tenant id in the path must be a UUID");
+                return;
+            }
+            try (TenantContext.Scope ignored = TenantContext.bind(tenantId.get())) {
+                chain.doFilter(request, response);
+            }
+            return;
+        }
         Optional<UUID> tenantId = parseTenantId(request.getHeader(HEADER));
         if (tenantId.isEmpty()) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Header " + HEADER + " is required and must be a UUID");
@@ -48,12 +61,16 @@ public class TenantFilter extends OncePerRequestFilter {
         }
     }
 
-    private static Optional<UUID> parseTenantId(String header) {
-        if (header == null) {
+    private static String path(HttpServletRequest request) {
+        return request.getRequestURI().substring(request.getContextPath().length());
+    }
+
+    private static Optional<UUID> parseTenantId(String value) {
+        if (value == null) {
             return Optional.empty();
         }
         try {
-            UUID tenantId = UUID.fromString(header.trim());
+            UUID tenantId = UUID.fromString(value.trim());
             return tenantId.equals(TenantIdentifierResolver.NO_TENANT) ? Optional.empty() : Optional.of(tenantId);
         } catch (IllegalArgumentException e) {
             return Optional.empty();

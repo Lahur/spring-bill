@@ -1,6 +1,5 @@
 package hr.bill.spring_bill.web;
 
-import hr.bill.spring_bill.config.tenant.TenantContext;
 import hr.bill.spring_bill.dto.web.tenant.TenantApiKeyRequest;
 import hr.bill.spring_bill.dto.web.tenant.TenantDto;
 import hr.bill.spring_bill.mapper.TenantMapper;
@@ -23,7 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Tenant", description = "Admin endpoints for a tenant's (issuer) data used on bills")
-/** Not behind {@code TenantFilter}: create needs no tenant, the rest bind the {@code tenantId} path variable themselves. */
+/** Ignores X-Tenant-Id: {@code TenantFilter} binds the {@code tenantId} path variable (create needs none). */
 public class TenantController {
 
     private final TenantService tenantService;
@@ -38,7 +37,7 @@ public class TenantController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public TenantDto get(@PathVariable UUID tenantId) {
-        return TenantContext.callAs(tenantId, () -> tenantMapper.toTenantDto(tenantService.get()));
+        return tenantMapper.toTenantDto(tenantService.get());
     }
 
     @PostMapping
@@ -62,7 +61,7 @@ public class TenantController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public TenantDto update(@PathVariable UUID tenantId, @RequestBody @Validated TenantDto request) {
-        return TenantContext.callAs(tenantId, () -> tenantMapper.toTenantDto(tenantService.update(request)));
+        return tenantMapper.toTenantDto(tenantService.update(request));
     }
 
     @PutMapping("/{tenantId}/api-key")
@@ -73,6 +72,6 @@ public class TenantController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public void saveApiKeys(@PathVariable UUID tenantId, @RequestBody TenantApiKeyRequest request) {
-        TenantContext.runAs(tenantId, () -> tenantApiKeyService.save(request));
+        tenantApiKeyService.save(request);
     }
 }

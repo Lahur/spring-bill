@@ -2,7 +2,6 @@ package hr.bill.spring_bill.config.tenant;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 /**
  * Holds the tenant the current thread is working for. Set per request by {@link TenantFilter} and per
@@ -39,13 +38,6 @@ public final class TenantContext {
     public static void runAs(UUID tenantId, Runnable action) {
         try (Scope ignored = bind(tenantId)) {
             action.run();
-        }
-    }
-
-    /** Returns {@code action}'s result computed as {@code tenantId}, restoring whatever tenant was bound before. */
-    public static <T> T callAs(UUID tenantId, Supplier<T> action) {
-        try (Scope ignored = bind(tenantId)) {
-            return action.get();
         }
     }
 

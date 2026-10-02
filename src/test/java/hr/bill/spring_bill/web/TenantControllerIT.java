@@ -1,8 +1,10 @@
 package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
+import hr.bill.spring_bill.config.tenant.TenantContext;
 import hr.bill.spring_bill.dao.TenantApiKeyRepository;
 import hr.bill.spring_bill.dto.web.tenant.TenantDto;
+import hr.bill.spring_bill.model.TenantApiKeyEntity;
 import hr.bill.spring_bill.model.TenantEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +120,28 @@ class TenantControllerIT extends AbstractIntegrationTest {
     @Test
     void unauthenticatedRequestIsRejected() throws Exception {
         mockMvc.perform(get(TENANT_URL)).andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * The tenant must be bound from the path before the request's Hibernate session opens (open-in-view),
+     * not just inside the controller; otherwise rows get stamped with whatever tenant the thread had
+     * (NO_TENANT in a real request). Binding another tenant on the test thread stands in for that.
+     */
+    @Test
+    void putApiKeysUsesThePathTenantEvenWhenAnotherIsBound() throws Exception {
+        TenantContext.runAs(UUID.randomUUID(), () -> {
+            try {
+                mockMvc.perform(put(TENANT_URL + "/api-key").with(adminJwt())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"eposlovanjeApiKey\":\"path-tenant-key\"}"))
+                        .andExpect(status().isNoContent());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        assertThat(tenantApiKeyRepository.findFirstBy()).get()
+                .extracting(TenantApiKeyEntity::getEposlovanjeApiKey).isEqualTo("path-tenant-key");
     }
 
     @Test
