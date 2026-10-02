@@ -8,14 +8,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TenantPropertyService {
 
+    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
     private final TenantPropertyRepository tenantPropertyRepository;
+
+    /** Every property the current tenant has set. */
+    public List<TenantPropertyEntity> findAll() {
+        log.debug("Fetching all tenant properties");
+        return tenantPropertyRepository.findAll();
+    }
 
     /** The current tenant's value for {@code property}, if set and not blank. */
     public Optional<String> find(TenantPropety property) {
@@ -35,9 +45,26 @@ public class TenantPropertyService {
             existing.ifPresent(tenantPropertyRepository::delete);
             return;
         }
+        validate(property, value.trim());
         log.debug("Saving tenant property {}", property);
         TenantPropertyEntity entity = existing.orElseGet(() -> TenantPropertyEntity.builder().property(property).build());
         entity.setValue(value.trim());
         tenantPropertyRepository.save(entity);
+    }
+
+    /** Rejects values the property's readers can't use, e.g. a counter that doesn't parse as a number. */
+    private static void validate(TenantPropety property, String value) {
+        switch (property) {
+            case DISBURSEMENT_COUNT, DEPOSIT_COUNT -> {
+                if (!value.matches("\\d{1,9}")) {
+                    throw new IllegalArgumentException(property + " must be a non-negative whole number");
+                }
+            }
+            case STATEMENT_MAIL_TO -> {
+                if (!EMAIL.matcher(value).matches()) {
+                    throw new IllegalArgumentException(property + " must be a valid email");
+                }
+            }
+        }
     }
 }

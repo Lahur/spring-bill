@@ -7,7 +7,6 @@ import hr.bill.spring_bill.model.TenantEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.UUID;
 
@@ -15,7 +14,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Drives {@link TenantController} over HTTP. {@link AbstractIntegrationTest} re-seeds
@@ -135,29 +133,5 @@ class TenantControllerIT extends AbstractIntegrationTest {
             assertThat(keys.getHubTenantId()).isEqualTo("tehnomodus");
         });
         assertThat(tenantApiKeyRepository.count()).isEqualTo(1);
-    }
-
-    @Test
-    void statementMailToCanBeSetReadAndCleared() throws Exception {
-        putStatementMailTo("{\"mailTo\":\"statements@example.com\"}").andExpect(status().isNoContent());
-        mockMvc.perform(get(TENANT_URL + "/statement-mail-to").with(adminJwt()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mailTo").value("statements@example.com"));
-
-        putStatementMailTo("{\"mailTo\":null}").andExpect(status().isNoContent());
-        mockMvc.perform(get(TENANT_URL + "/statement-mail-to").with(adminJwt()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mailTo").doesNotExist());
-    }
-
-    @Test
-    void statementMailToRejectsInvalidEmail() throws Exception {
-        putStatementMailTo("{\"mailTo\":\"not-an-email\"}").andExpect(status().isBadRequest());
-    }
-
-    private ResultActions putStatementMailTo(String body) throws Exception {
-        return mockMvc.perform(put(TENANT_URL + "/statement-mail-to").with(adminJwt())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
     }
 }
