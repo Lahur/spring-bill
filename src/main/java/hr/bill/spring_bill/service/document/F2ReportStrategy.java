@@ -237,7 +237,7 @@ public class F2ReportStrategy implements BillStrategy {
             throw new RuntimeException(e);
         }
         List<DocumentStatusResponse> bills = eposlovanjeClient.getOutgoingDocuments(DocumentListParams.builder()
-                .issuedFrom(LocalDate.now(CroatianTimeZone.ZONE).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
+                .issuedFrom(LocalDate.parse(orig.getIssueDate()).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .issuedTo(LocalDate.now(CroatianTimeZone.ZONE).plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
                 .build());
         DocumentStatusResponse lastBill = bills.stream()
