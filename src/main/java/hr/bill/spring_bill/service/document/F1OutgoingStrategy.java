@@ -99,6 +99,7 @@ public class F1OutgoingStrategy implements BillStrategy {
         List<ReceiptSummaryDto> receipts = f1WebClient.getReceipts(GetReceiptsQuery.builder()
                         .dateFrom(from == null ? null : from.format(DateTimeFormatter.ISO_DATE_TIME))
                         .dateTo(to == null ? null : to.format(DateTimeFormatter.ISO_DATE_TIME))
+                        .pageSize(100)
                         .build())
                 .items().stream()
                 .filter(ri -> {
