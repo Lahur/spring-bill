@@ -1,5 +1,6 @@
 package hr.bill.spring_bill.clients.eposlovanje;
 
+import feign.QueryMap;
 import hr.bill.spring_bill.clients.eposlovanje.params.BankingTransactionParams;
 import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
 import hr.bill.spring_bill.clients.eposlovanje.params.DocumentStatusLookupParams;
@@ -9,7 +10,6 @@ import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.common.PingResponse;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.request.*;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.response.*;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,16 +38,16 @@ public interface EposlovanjeClient {
     DocumentVisualizationResponse getVisualization(@PathVariable("id") long id);
 
     @GetMapping("/api/v2/document/incoming")
-    List<DocumentStatusResponse> getIncomingDocuments(@SpringQueryMap DocumentListParams params);
+    List<DocumentStatusResponse> getIncomingDocuments(@QueryMap DocumentListParams params);
 
     @GetMapping("/api/v2/document/outgoing")
-    List<DocumentStatusResponse> getOutgoingDocuments(@SpringQueryMap DocumentListParams params);
+    List<DocumentStatusResponse> getOutgoingDocuments(@QueryMap DocumentListParams params);
 
     @GetMapping("/api/v2/document/status/{id}")
     DocumentStatusResponse getDocumentStatus(@PathVariable("id") long id);
 
     @GetMapping("/api/v2/document/statuslookup")
-    DocumentStatusResponse getDocumentStatusLookup(@SpringQueryMap DocumentStatusLookupParams params);
+    DocumentStatusResponse getDocumentStatusLookup(@QueryMap DocumentStatusLookupParams params);
 
     @PostMapping("/api/v2/document/changestatus/{id}")
     DocumentChangeStatusResponse changeDocumentStatus(
@@ -78,7 +78,7 @@ public interface EposlovanjeClient {
     void rejected(@RequestBody EReportingDocumentRejectedRequest req);
 
     @GetMapping("/api/v2/ereporting/requests")
-    EReportingRequestsResponse getEReportingRequests(@SpringQueryMap EReportingRequestsParams params);
+    EReportingRequestsResponse getEReportingRequests(@QueryMap EReportingRequestsParams params);
 
     // ── Banking ───────────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ public interface EposlovanjeClient {
     List<BankingAccount> getBankingAccounts();
 
     @GetMapping("/api/v2/banking/transactions")
-    List<BankingTransaction> getBankingTransactions(@SpringQueryMap BankingTransactionParams params);
+    List<BankingTransaction> getBankingTransactions(@QueryMap BankingTransactionParams params);
 
     // ── Account ───────────────────────────────────────────────────────────────
 

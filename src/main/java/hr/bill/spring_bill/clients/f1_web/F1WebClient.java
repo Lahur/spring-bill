@@ -1,5 +1,6 @@
 package hr.bill.spring_bill.clients.f1_web;
 
+import feign.QueryMap;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.FiscalStatus;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.PrintFormat;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.ChangePaymentMethodDto;
@@ -8,7 +9,6 @@ import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.GetReceiptsQuery;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.request.UpdateReceiptDto;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.*;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +23,7 @@ public interface F1WebClient {
     // ── Receipts ──────────────────────────────────────────────────────────────
 
     @GetMapping("/api/Receipts")
-    ReceiptListResultDto getReceipts(@SpringQueryMap GetReceiptsQuery query);
+    ReceiptListResultDto getReceipts(@QueryMap GetReceiptsQuery query);
 
     @PostMapping("/api/Receipts")
     ReceiptDto createReceipt(@RequestBody CreateReceiptDto req);
