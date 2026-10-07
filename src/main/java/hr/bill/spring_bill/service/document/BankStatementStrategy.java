@@ -45,7 +45,9 @@ public class BankStatementStrategy implements DocumentStrategy {
         byte[] content = billPdfClient.renderBankStatement(
                 bankStatementReportMapper.toBankStatementRequest(statement, transactions));
 
-        String filename = "bank-statement-" + statement.getId();
+        String filename = "bank-statement-" + (statement.getSequenceNumber() != null
+                ? statement.getSequenceNumber()
+                : statement.getId());
         return BillDocument.builder()
                 .content(content)
                 .filename(filename)

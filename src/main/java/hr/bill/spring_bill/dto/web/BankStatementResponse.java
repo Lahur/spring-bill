@@ -17,6 +17,9 @@ public record BankStatementResponse(
         @Schema(description = "Statement ID as assigned by the bank")
         String statementId,
 
+        @Schema(description = "Statement number in the account's sequence", example = "67")
+        Integer sequenceNumber,
+
         @Schema(description = "IBAN of the account the statement is for")
         String iban,
 

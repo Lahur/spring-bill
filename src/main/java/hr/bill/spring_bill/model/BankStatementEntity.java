@@ -21,6 +21,9 @@ public class BankStatementEntity extends TenantScopedEntity {
     @Column(name = "statement_id", nullable = false)
     private String statementId;
 
+    @Column(name = "sequence_number")
+    private Integer sequenceNumber;
+
     @Column(name = "iban", length = 34, nullable = false)
     private String iban;
 

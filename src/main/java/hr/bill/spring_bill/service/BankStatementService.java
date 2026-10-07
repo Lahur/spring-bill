@@ -21,6 +21,7 @@ import hr.bill.spring_bill.mapper.CamtStatementMapper;
 import hr.bill.spring_bill.model.BankStatementEntity;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.enums.BankTransactionType;
+import hr.bill.spring_bill.model.enums.TenantPropety;
 import hr.bill.spring_bill.service.document.BillStrategyFactory;
 import hr.bill.spring_bill.service.document.RemoteMatchResult;
 import hr.bill.spring_bill.xml.camt.model.CamtDocument;
@@ -60,6 +61,8 @@ public class BankStatementService {
     private final AisEposlovanjeClient aisEposlovanjeClient;
 
     private final TenantService tenantService;
+
+    private final TenantPropertyService tenantPropertyService;
 
     private final AisTransactionMapper aisTransactionMapper;
 
@@ -226,6 +229,7 @@ public class BankStatementService {
         BigDecimal net = amounts.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         return BankStatementEntity.builder()
                 .statementId(statementId(day))
+                .sequenceNumber(tenantPropertyService.increment(TenantPropety.STATEMENT_COUNT))
                 .accountName("")
                 .bankBic(institution.bic())
                 .createdAt(LocalDateTime.now())
@@ -308,6 +312,9 @@ public class BankStatementService {
         }
 
         BankStatementEntity statement = bankStatementRepository.save(camtStatementMapper.toBankStatementEntity(document));
+        if (statement.getSequenceNumber() != null) {
+            tenantPropertyService.raiseTo(TenantPropety.STATEMENT_COUNT, statement.getSequenceNumber());
+        }
         processTransactions(statement, camtStatementMapper.toBankTransactionEntities(document, statement.getId()));
 
         return bankStatementMapper.toBankStatementResponse(statement);

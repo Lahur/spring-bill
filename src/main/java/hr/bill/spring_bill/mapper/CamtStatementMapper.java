@@ -28,6 +28,7 @@ public interface CamtStatementMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "sentCount", ignore = true)
     @Mapping(source = "doc.bkToCstmrStmt.stmt.id", target = "statementId")
+    @Mapping(target = "sequenceNumber", expression = "java(parseInteger(doc.getBkToCstmrStmt().getStmt().getLglSeqNb()))")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.id.iban", target = "iban")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.ccy", target = "currency")
     @Mapping(source = "doc.bkToCstmrStmt.stmt.acct.nm", target = "accountName")

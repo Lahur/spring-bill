@@ -11,6 +11,7 @@ public record BankStatementRequest(
         String bankAddress,
         String bankBic,
         String statementNumber,
+        String sequenceNumber,
         String statementDate,
         String accountIban,
         String accountName,

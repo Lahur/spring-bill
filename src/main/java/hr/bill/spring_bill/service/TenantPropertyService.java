@@ -52,10 +52,35 @@ public class TenantPropertyService {
         tenantPropertyRepository.save(entity);
     }
 
+    /** Advances the counter {@code property} by one and returns the new value; an unset counter starts at 0. */
+    @Transactional
+    public int increment(TenantPropety property) {
+        TenantPropertyEntity entity = tenantPropertyRepository.findByProperty(property)
+                .orElseGet(() -> TenantPropertyEntity.builder().property(property).value("0").build());
+        int next = Integer.parseInt(entity.getValue().trim()) + 1;
+        log.debug("Incrementing tenant property {} to {}", property, next);
+        entity.setValue(String.valueOf(next));
+        tenantPropertyRepository.save(entity);
+        return next;
+    }
+
+    /** Moves the counter {@code property} up to {@code value}; a counter already at or past it is left alone. */
+    @Transactional
+    public void raiseTo(TenantPropety property, int value) {
+        Optional<TenantPropertyEntity> existing = tenantPropertyRepository.findByProperty(property);
+        if (existing.isPresent() && Integer.parseInt(existing.get().getValue().trim()) >= value) {
+            return;
+        }
+        log.debug("Raising tenant property {} to {}", property, value);
+        TenantPropertyEntity entity = existing.orElseGet(() -> TenantPropertyEntity.builder().property(property).build());
+        entity.setValue(String.valueOf(value));
+        tenantPropertyRepository.save(entity);
+    }
+
     /** Rejects values the property's readers can't use, e.g. a counter that doesn't parse as a number. */
     private static void validate(TenantPropety property, String value) {
         switch (property) {
-            case DISBURSEMENT_COUNT, DEPOSIT_COUNT -> {
+            case DISBURSEMENT_COUNT, DEPOSIT_COUNT, STATEMENT_COUNT -> {
                 if (!value.matches("\\d{1,9}")) {
                     throw new IllegalArgumentException(property + " must be a non-negative whole number");
                 }

@@ -78,6 +78,12 @@ class BankStatementFetchIT extends AbstractIntegrationTest {
 
         assertThat(imported).extracting(BankStatementResponse::periodFrom)
                 .containsExactlyElementsOf(expectedByDay.keySet());
+        int firstSequenceNumber = imported[0].sequenceNumber();
+        assertThat(imported).extracting(BankStatementResponse::sequenceNumber)
+                .containsExactlyElementsOf(java.util.stream.IntStream
+                        .range(firstSequenceNumber, firstSequenceNumber + imported.length).boxed().toList());
+        assertThat(tenantPropertyService.find(TenantPropety.STATEMENT_COUNT))
+                .contains(String.valueOf(firstSequenceNumber + imported.length - 1));
         for (BankStatementResponse statement : imported) {
             LocalDate day = statement.periodFrom();
             List<JsonNode> dayExpected = expectedByDay.get(day);

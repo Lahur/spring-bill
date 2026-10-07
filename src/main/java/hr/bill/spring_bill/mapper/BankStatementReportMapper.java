@@ -30,6 +30,7 @@ public interface BankStatementReportMapper {
                 .bankAddress(bankAddress(statement.getBankBic()))
                 .bankBic(shortBic(statement.getBankBic()))
                 .statementNumber(statement.getStatementId())
+                .sequenceNumber(statement.getSequenceNumber() != null ? String.valueOf(statement.getSequenceNumber()) : null)
                 .statementDate(formatDate(statement.getCreatedAt()))
                 .accountIban(statement.getIban())
                 .accountName(statement.getAccountName())
