@@ -45,6 +45,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +55,9 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class F1OutgoingStrategy implements BillStrategy {
+
+    /** Largest page size the F1 receipts API accepts. */
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final F1WebClient f1WebClient;
 
@@ -96,12 +100,10 @@ public class F1OutgoingStrategy implements BillStrategy {
     public List<BillResponse> getBillsFilter(BillSearchParams params) {
         LocalDateTime from = params.dateFrom() == null ? null : params.dateFrom().atStartOfDay();
         LocalDateTime to = params.dateTill() == null ? null : params.dateTill().plusDays(1).atStartOfDay();
-        List<ReceiptSummaryDto> receipts = f1WebClient.getReceipts(GetReceiptsQuery.builder()
+        List<ReceiptSummaryDto> receipts = getAllReceipts(GetReceiptsQuery.builder()
                         .dateFrom(from == null ? null : from.format(DateTimeFormatter.ISO_DATE_TIME))
-                        .dateTo(to == null ? null : to.format(DateTimeFormatter.ISO_DATE_TIME))
-                        .pageSize(100)
-                        .build())
-                .items().stream()
+                        .dateTo(to == null ? null : to.format(DateTimeFormatter.ISO_DATE_TIME)))
+                .stream()
                 .filter(ri -> {
                     LocalDateTime issueDateTime = LocalDateTime.parse(ri.issueDateTime());
                     return (from == null || !issueDateTime.isBefore(from))
@@ -270,10 +272,9 @@ public class F1OutgoingStrategy implements BillStrategy {
         LocalDateTime threshold = repository.findFirstByBillTypeOrderByBillDateDesc(BillType.F1_BILL)
                 .map(b -> b.getBillDate().plusMinutes(10))
                 .orElseGet(() -> LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1).minusWeeks(syncLookbackWeeks).atStartOfDay());
-        GetReceiptsQuery query = GetReceiptsQuery.builder()
-                .dateFrom(threshold.format(DateTimeFormatter.ISO_DATE_TIME))
-                .build();
-        List<ReceiptSummaryDto> toSync = f1WebClient.getReceipts(query).items().stream()
+        List<ReceiptSummaryDto> toSync = getAllReceipts(GetReceiptsQuery.builder()
+                        .dateFrom(threshold.format(DateTimeFormatter.ISO_DATE_TIME)))
+                .stream()
                 .filter(ri -> LocalDateTime.parse(ri.issueDateTime()).isAfter(threshold))
                 .toList();
         toSync.forEach((ri) -> {
@@ -287,10 +288,8 @@ public class F1OutgoingStrategy implements BillStrategy {
     public int fullRefresh() {
         log.debug("Fully refreshing F1 bills for the current month");
         LocalDate monthStart = LocalDate.now(CroatianTimeZone.ZONE).withDayOfMonth(1);
-        GetReceiptsQuery query = GetReceiptsQuery.builder()
-                .dateFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME))
-                .build();
-        List<ReceiptSummaryDto> receipts = f1WebClient.getReceipts(query).items();
+        List<ReceiptSummaryDto> receipts = getAllReceipts(GetReceiptsQuery.builder()
+                .dateFrom(monthStart.atStartOfDay().format(DateTimeFormatter.ISO_DATE_TIME)));
         receipts.forEach(ri -> {
             BillEntity mapped = billEntityMapper.toBillEntity(f1WebClient.getReceipt(ri.id()), BillType.F1_BILL);
             repository.save(repository.findBySystemIdAndBillType(mapped.getSystemId(), BillType.F1_BILL)
@@ -376,6 +375,17 @@ public class F1OutgoingStrategy implements BillStrategy {
         }
         log.info("Resolved {} bank transaction(s) against upstream F1 receipts", updated);
         return new RemoteMatchResult(updated, updatedMonths);
+    }
+
+    private List<ReceiptSummaryDto> getAllReceipts(GetReceiptsQuery.GetReceiptsQueryBuilder query) {
+        List<ReceiptSummaryDto> receipts = new ArrayList<>();
+        int page = 1;
+        ReceiptListResultDto result;
+        do {
+            result = f1WebClient.getReceipts(query.page(page++).pageSize(MAX_PAGE_SIZE).build());
+            receipts.addAll(result.items());
+        } while (Boolean.TRUE.equals(result.hasNextPage()));
+        return receipts;
     }
 
     private void markLocalBillPaid(long systemId) {
