@@ -11,6 +11,8 @@ import java.util.UUID;
 
 public interface BankTransactionRepository extends JpaRepository<BankTransactionEntity, UUID> {
 
+    List<BankTransactionEntity> findAllByOrderByTransactionDateDesc();
+
     List<BankTransactionEntity> findAllByCreditDebitIndicatorAndReceiverIbanIgnoreCaseOrderByTransactionDateDesc(
             CreditDebitIndicator creditDebitIndicator, String receiverIban);
 

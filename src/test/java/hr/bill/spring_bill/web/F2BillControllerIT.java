@@ -3,7 +3,10 @@ package hr.bill.spring_bill.web;
 import hr.bill.spring_bill.AbstractIntegrationTest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.dao.BillRepository;
+import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.BusinessCheckResponse;
+import hr.bill.spring_bill.dto.web.SendBillReportItem;
+import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillDocumentKind;
@@ -206,6 +209,30 @@ class F2BillControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void sendingABillMissingLocallyStillCountsTheOthers() throws Exception {
+        BillResponse missingLocally = createBill();
+        BillResponse storedLocally = createBill();
+        billRepository.deleteById(missingLocally.id());
+
+        // The missing bill goes first: before the fix its NotFoundException aborted the loop, so the
+        // stored bill's sent count was never incremented and the request 404'd after the mail went out.
+        String requestBody = objectMapper.writeValueAsString(SendBillReportsRequest.builder()
+                .reports(List.of(reportItem(missingLocally), reportItem(storedLocally)))
+                .email("f2-sent-count@example.com")
+                .build());
+
+        mockMvc.perform(post("/document/generate-and-send")
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody)
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        assertThat(billRepository.findBySystemIdAndBillType(storedLocally.systemId(), BillType.F2_BILL))
+                .hasValueSatisfying(bill -> assertThat(bill.getSentCount()).isEqualTo(1));
+        assertThat(billRepository.findBySystemIdAndBillType(missingLocally.systemId(), BillType.F2_BILL)).isEmpty();
+    }
+
+    @Test
     void reviewsABillWithoutPersistingIt() throws Exception {
         long countBefore = countBills();
 
@@ -234,6 +261,14 @@ class F2BillControllerIT extends AbstractIntegrationTest {
                         .with(jwt()))
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsByteArray(), BillResponse.class);
+    }
+
+    private static SendBillReportItem reportItem(BillResponse bill) {
+        return SendBillReportItem.builder()
+                .id(String.valueOf(bill.systemId()))
+                .billId(bill.fullBillId())
+                .type(BillReportType.F2_OUTGOING)
+                .build();
     }
 
     private long countBills() throws Exception {

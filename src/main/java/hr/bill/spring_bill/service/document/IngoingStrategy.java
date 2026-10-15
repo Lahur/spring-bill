@@ -295,10 +295,12 @@ public class IngoingStrategy implements BillStrategy {
     @Override
     public void incrementSentCount(String id) {
         log.debug("Incrementing sent count for ingoing bill {}", id);
-        BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.INGOING_BILL)
-                .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
-        billEntity.setSentCount(billEntity.getSentCount() + 1);
-        repository.save(billEntity);
+        // The bill may have been sent straight from the remote system without being synced locally
+        repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.INGOING_BILL)
+                .ifPresentOrElse(billEntity -> {
+                    billEntity.setSentCount(billEntity.getSentCount() + 1);
+                    repository.save(billEntity);
+                }, () -> log.debug("Ingoing bill {} not stored locally, skipping sent count increment", id));
     }
 
     @Override

@@ -6,22 +6,33 @@ import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
 import hr.bill.spring_bill.dao.BillRepository;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.common.DocumentStatus;
 import hr.bill.spring_bill.dto.eposlovanje.eposlovanje.response.DocumentStatusResponse;
+import hr.bill.spring_bill.dto.web.BillReportType;
+import hr.bill.spring_bill.dto.web.SendBillReportItem;
+import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
 import hr.bill.spring_bill.model.BillEntity;
 import hr.bill.spring_bill.model.enums.BillDocumentStatus;
 import hr.bill.spring_bill.model.enums.BillType;
+import hr.bill.spring_bill.service.UblXmlService;
+import hr.bill.spring_bill.xml.ubl.model.UblAdditionalDocumentReference;
+import hr.bill.spring_bill.xml.ubl.model.UblInvoice;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,6 +55,9 @@ class IngoingBillControllerIT extends AbstractIntegrationTest {
 
     @Autowired
     private EposlovanjeClient eposlovanjeClient;
+
+    @Autowired
+    private UblXmlService ublXmlService;
 
     @Test
     void listsLocallyPersistedBills() throws Exception {
@@ -136,15 +150,91 @@ class IngoingBillControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void sendingABillMissingLocallyStillCountsTheOthers() throws Exception {
+        List<DocumentStatusResponse> documents = findIncomingDocuments().stream()
+                .filter(this::isRenderable)
+                .limit(2)
+                .toList();
+        Assumptions.assumeTrue(documents.size() >= 2,
+                "Fewer than two renderable incoming documents currently exist in the Eposlovanje sandbox to test against");
+        DocumentStatusResponse missingLocally = documents.get(0);
+        DocumentStatusResponse storedLocally = documents.get(1);
+        billRepository.findBySystemIdAndBillType(missingLocally.id(), BillType.INGOING_BILL)
+                .ifPresent(billRepository::delete);
+        BillEntity stored = billRepository.findBySystemIdAndBillType(storedLocally.id(), BillType.INGOING_BILL)
+                .orElseGet(() -> billRepository.save(BillEntity.builder()
+                        .systemId(storedLocally.id())
+                        .fullBillId(storedLocally.documentId())
+                        .clientName(storedLocally.supplierPartyName())
+                        .billDate(LocalDateTime.parse(storedLocally.issuedOn()))
+                        .totalAmount(BigDecimal.valueOf(storedLocally.amount()))
+                        .billType(BillType.INGOING_BILL)
+                        .build()));
+        int sentCountBefore = stored.getSentCount();
+
+        // The missing bill goes first: before the fix its NotFoundException aborted the loop, so the
+        // stored bill's sent count was never incremented and the request 404'd after the mail went out.
+        String requestBody = objectMapper.writeValueAsString(SendBillReportsRequest.builder()
+                .reports(List.of(reportItem(missingLocally), reportItem(storedLocally)))
+                .email("ingoing-sent-count@example.com")
+                .build());
+
+        mockMvc.perform(post("/document/generate-and-send")
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody)
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        assertThat(billRepository.findBySystemIdAndBillType(storedLocally.id(), BillType.INGOING_BILL))
+                .hasValueSatisfying(bill -> assertThat(bill.getSentCount()).isEqualTo(sentCountBefore + 1));
+        assertThat(billRepository.findBySystemIdAndBillType(missingLocally.id(), BillType.INGOING_BILL)).isEmpty();
+    }
+
+    @Test
     void unauthenticatedRequestIsRejected() throws Exception {
         mockMvc.perform(get("/bill/ingoing")).andExpect(status().isUnauthorized());
     }
 
     private Optional<DocumentStatusResponse> findAnyIncomingDocument() {
-        List<DocumentStatusResponse> documents = eposlovanjeClient.getIncomingDocuments(DocumentListParams.builder()
+        return findIncomingDocuments().stream().findFirst();
+    }
+
+    private List<DocumentStatusResponse> findIncomingDocuments() {
+        return eposlovanjeClient.getIncomingDocuments(DocumentListParams.builder()
                 .issuedFrom(LocalDateTime.now().minusYears(2).format(DateTimeFormatter.ISO_DATE_TIME))
                 .limit(5)
                 .build());
-        return documents.stream().findFirst();
+    }
+
+    /** The sandbox also holds invoices other test runs sent with a stub "%PDF-1.4" attachment, which
+     * PDFBox can't merge; only documents with no embedded PDF (hub-bill renders those) or a loadable
+     * one can be sent. */
+    private boolean isRenderable(DocumentStatusResponse document) {
+        UblInvoice invoice = ublXmlService.parse(eposlovanjeClient.getDocument(document.id()).document());
+        Optional<String> embedded = Optional.ofNullable(invoice.getAdditionalDocumentReferences()).stream()
+                .flatMap(List::stream)
+                .map(UblAdditionalDocumentReference::getAttachment)
+                .filter(Objects::nonNull)
+                .map(UblAdditionalDocumentReference.Attachment::getEmbeddedDocumentBinaryObject)
+                .filter(Objects::nonNull)
+                .map(UblAdditionalDocumentReference.Attachment.EmbeddedDocumentBinaryObject::getValue)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst();
+        if (embedded.isEmpty()) {
+            return true;
+        }
+        try (PDDocument ignored = Loader.loadPDF(Base64.getDecoder().decode(embedded.get().trim()))) {
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static SendBillReportItem reportItem(DocumentStatusResponse document) {
+        return SendBillReportItem.builder()
+                .id(String.valueOf(document.id()))
+                .billId(document.documentId())
+                .type(BillReportType.INGOING)
+                .build();
     }
 }

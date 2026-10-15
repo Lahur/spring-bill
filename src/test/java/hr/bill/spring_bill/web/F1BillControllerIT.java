@@ -1,6 +1,9 @@
 package hr.bill.spring_bill.web;
 
 import hr.bill.spring_bill.AbstractIntegrationTest;
+import hr.bill.spring_bill.dto.web.BillReportType;
+import hr.bill.spring_bill.dto.web.SendBillReportItem;
+import hr.bill.spring_bill.dto.web.SendBillReportsRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dao.BillRepository;
@@ -214,6 +217,30 @@ class F1BillControllerIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/bill/f1")).andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void sendingABillMissingLocallyStillCountsTheOthers() throws Exception {
+        BillResponse missingLocally = createBill();
+        BillResponse storedLocally = createBill();
+        billRepository.deleteById(missingLocally.id());
+
+        // The missing bill goes first: before the fix its NotFoundException aborted the loop, so the
+        // stored bill's sent count was never incremented and the request 404'd after the mail went out.
+        String requestBody = objectMapper.writeValueAsString(SendBillReportsRequest.builder()
+                .reports(List.of(reportItem(missingLocally), reportItem(storedLocally)))
+                .email("f1-sent-count@example.com")
+                .build());
+
+        mockMvc.perform(post("/document/generate-and-send")
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody)
+                        .with(jwt()))
+                .andExpect(status().isOk());
+
+        assertThat(billRepository.findBySystemIdAndBillType(storedLocally.systemId(), BillType.F1_BILL))
+                .hasValueSatisfying(bill -> assertThat(bill.getSentCount()).isEqualTo(1));
+        assertThat(billRepository.findBySystemIdAndBillType(missingLocally.systemId(), BillType.F1_BILL)).isEmpty();
+    }
+
     private BillResponse createBill() throws Exception {
         return objectMapper.readValue(mockMvc.perform(post("/bill/f1")
                         .contentType(APPLICATION_JSON)
@@ -221,6 +248,14 @@ class F1BillControllerIT extends AbstractIntegrationTest {
                         .with(jwt()))
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsByteArray(), BillResponse.class);
+    }
+
+    private static SendBillReportItem reportItem(BillResponse bill) {
+        return SendBillReportItem.builder()
+                .id(String.valueOf(bill.systemId()))
+                .billId(bill.fullBillId())
+                .type(BillReportType.F1_OUTGOING)
+                .build();
     }
 
     private long countBills() throws Exception {

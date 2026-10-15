@@ -30,7 +30,6 @@ import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
 import hr.bill.spring_bill.dto.web.bill.b2b.F2BillRequest;
 import hr.bill.spring_bill.dto.web.bill.info.BillInfoResponse;
-import hr.bill.spring_bill.exception.NotFoundException;
 import hr.bill.spring_bill.mapper.*;
 import hr.bill.spring_bill.model.BankTransactionEntity;
 import hr.bill.spring_bill.model.BillEntity;
@@ -377,10 +376,12 @@ public class F2OutgoingStrategy implements BillStrategy {
     @Override
     public void incrementSentCount(String id) {
         log.debug("Incrementing sent count for F2 outgoing bill {}", id);
-        BillEntity billEntity = repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.F2_BILL)
-                .orElseThrow(() -> new NotFoundException("Bill not found for id: " + id));
-        billEntity.setSentCount(billEntity.getSentCount() + 1);
-        repository.save(billEntity);
+        // The bill may have been sent straight from the remote system without being synced locally
+        repository.findBySystemIdAndBillType(Long.parseLong(id), BillType.F2_BILL)
+                .ifPresentOrElse(billEntity -> {
+                    billEntity.setSentCount(billEntity.getSentCount() + 1);
+                    repository.save(billEntity);
+                }, () -> log.debug("F2 outgoing bill {} not stored locally, skipping sent count increment", id));
     }
 
     @Override
