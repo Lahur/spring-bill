@@ -52,7 +52,8 @@ import java.util.zip.ZipInputStream;
 @RequiredArgsConstructor
 public class BankStatementService {
 
-    private static final List<String> BOOKED_BALANCE_TYPES = List.of("closingBooked", "interimBooked");
+    private static final List<String> BALANCE_TYPES_BY_PRIORITY =
+            List.of("closingBooked", "interimBooked", "interimAvailable", "expected");
 
     private static final String CASH_WITHDRAWAL_PREFIX = "ISPLATA BANKOMAT";
 
@@ -201,7 +202,7 @@ public class BankStatementService {
             return List.of();
         }
 
-        Balance balance = bookedBalance(aisEposlovanjeClient.getAccountBalances(accountId));
+        Balance balance = statementBalance(aisEposlovanjeClient.getAccountBalances(accountId));
         InstitutionResponse institution = aisEposlovanjeClient.getInstitution(requisition.institutionId());
 
         List<BankStatementResponse> imported = new ArrayList<>();
@@ -269,11 +270,11 @@ public class BankStatementService {
         return tenant.getIban() + "-" + day.format(DateTimeFormatter.BASIC_ISO_DATE);
     }
 
-    private Balance bookedBalance(BalancesResponse response) {
+    private Balance statementBalance(BalancesResponse response) {
         if (response == null || response.balances() == null) {
             return null;
         }
-        for (String type : BOOKED_BALANCE_TYPES) {
+        for (String type : BALANCE_TYPES_BY_PRIORITY) {
             Optional<Balance> balance = response.balances().stream()
                     .filter(b -> type.equals(b.balanceType()) && b.balanceAmount() != null)
                     .findFirst();
@@ -281,7 +282,7 @@ public class BankStatementService {
                 return balance.get();
             }
         }
-        log.warn("AIS returned no booked balance, statements will be saved without opening/closing balance");
+        log.warn("AIS returned no usable balance, statements will be saved without opening/closing balance");
         return null;
     }
 
