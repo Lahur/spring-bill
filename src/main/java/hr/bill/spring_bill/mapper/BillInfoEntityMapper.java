@@ -110,8 +110,7 @@ public interface BillInfoEntityMapper {
     @Mapping(target = "billNumber", source = "bill.fullBillId")
     @Mapping(target = "billDate", expression = "java(formatLocalDate(info.getMainBillDate()))")
     @Mapping(target = "billTime", expression = "java(formatBillTime(bill))")
-    @Mapping(target = "billProjectDescription", expression = "java(firstItemDescription(items))")
-    @Mapping(target = "billProjectName", expression = "java(firstItemName(items))")
+    @Mapping(target = "items", expression = "java(toPdfItems(items))")
     @Mapping(target = "billBasePrice", expression = "java(formatAmount(info.getVatExclusiveAmount()))")
     @Mapping(target = "billPdvPrice", expression = "java(formatAmount(info.getVatAmount()))")
     @Mapping(target = "billTotalPrice", expression = "java(formatAmount(info.getVatInclusiveAmount()))")
@@ -226,12 +225,14 @@ public interface BillInfoEntityMapper {
         return items.stream().sorted(Comparator.comparing(BillItemEntity::getItemOrder)).toList();
     }
 
-    default String firstItemName(List<BillItemEntity> items) {
-        return items == null || items.isEmpty() ? null : sortedItems(items).getFirst().getName();
-    }
-
-    default String firstItemDescription(List<BillItemEntity> items) {
-        return items == null || items.isEmpty() ? null : sortedItems(items).getFirst().getDescription();
+    default List<BillPdfItemDto> toPdfItems(List<BillItemEntity> items) {
+        return items == null ? List.of() : sortedItems(items).stream()
+                .map(item -> BillPdfItemDto.builder()
+                        .name(item.getName())
+                        .description(item.getDescription())
+                        .basePrice(formatAmount(item.getBaseAmount()))
+                        .build())
+                .toList();
     }
 
     default Boolean firstItemReverseCharge(List<BillItemEntity> items) {

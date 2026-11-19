@@ -285,9 +285,10 @@ class F2BillControllerIT extends AbstractIntegrationTest {
         request.put("billTime", "11:00:00");
         request.put("dueDate", LocalDate.now(CroatianTimeZone.ZONE).plusDays(15).toString());
         request.put("buyerOib", BUYER_OIB);
-        request.put("baseAmount", "100.00");
-        request.put("billItemName", "Test item");
-        request.put("billItemDescription", "Test item description");
+        request.put("items", List.of(Map.of(
+                "baseAmount", "100.00",
+                "billItemName", "Test item",
+                "billItemDescription", "Test item description")));
         return request;
     }
 }

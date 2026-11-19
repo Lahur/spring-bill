@@ -33,8 +33,7 @@ public interface UblInvoiceMapper {
     @Mapping(target = "billNumber", source = "ublInvoice.id")
     @Mapping(target = "billDate", expression = "java(formatDate(ublInvoice.getIssueDate()))")
     @Mapping(target = "billTime", expression = "java(formatTime(ublInvoice.getIssueTime()))")
-    @Mapping(target = "billProjectDescription", expression = "java(ublInvoice.getInvoiceLines().getFirst().getItem().getDescription())")
-    @Mapping(target = "billProjectName", expression = "java(ublInvoice.getInvoiceLines().getFirst().getItem().getName())")
+    @Mapping(target = "items", expression = "java(toPdfItems(ublInvoice.getInvoiceLines()))")
     @Mapping(target = "billBasePrice", expression = "java(formatAmount(ublInvoice.getLegalMonetaryTotal().getTaxExclusiveAmount()))")
     @Mapping(target = "billPdvPrice", expression = "java(formatAmount(ublInvoice.getTaxTotal().getTaxAmount()))")
     @Mapping(target = "billTotalPrice", expression = "java(formatAmount(ublInvoice.getLegalMonetaryTotal().getTaxInclusiveAmount()))")
@@ -45,6 +44,16 @@ public interface UblInvoiceMapper {
     @Mapping(target = "jir", ignore = true)
     @Mapping(target = "details", source = "ublInvoice")
     BillWithDetailsRequest toBillWithDetailsRequest(UblInvoice ublInvoice, String pdf417Image);
+
+    default List<BillPdfItemDto> toPdfItems(List<UblInvoiceLine> lines) {
+        return lines == null ? List.of() : lines.stream()
+                .map(line -> BillPdfItemDto.builder()
+                        .name(line.getItem().getName())
+                        .description(line.getItem().getDescription())
+                        .basePrice(formatAmount(line.getLineExtensionAmount()))
+                        .build())
+                .toList();
+    }
 
     default String formatAmount(UblAmount amount) {
         return amount == null ? null : amount.getValue().replace('.', ',');

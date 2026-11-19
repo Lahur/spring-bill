@@ -1,6 +1,8 @@
 package hr.bill.spring_bill.mapper;
 
+import hr.bill.spring_bill.dto.bill_pdf.common.BillPdfItemDto;
 import hr.bill.spring_bill.dto.bill_pdf.request.BillRequest;
+import hr.bill.spring_bill.dto.eposlovanje.f1_web.common.ReceiptItemDto;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptDto;
 import hr.bill.spring_bill.service.NumberToWordsService;
 import org.mapstruct.Mapper;
@@ -13,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Mapper(componentModel = "spring", imports = {NumberToWordsService.class, LocalDateTime.class, LocalDate.class, ChronoUnit.class})
 public interface ReceiptBillRequestMapper {
@@ -25,8 +28,7 @@ public interface ReceiptBillRequestMapper {
     @Mapping(target = "billNumber", source = "receiptDto.formattedReceiptNumber")
     @Mapping(target = "billDate", expression = "java(formatDate(receiptDto.issueDateTime()))")
     @Mapping(target = "billTime", expression = "java(formatTime(receiptDto.issueDateTime()))")
-    @Mapping(target = "billProjectDescription", expression = "java(receiptDto.items().getFirst().description())")
-    @Mapping(target = "billProjectName", expression = "java(receiptDto.items().getFirst().name())")
+    @Mapping(target = "items", expression = "java(toPdfItems(receiptDto.items()))")
     @Mapping(target = "billBasePrice", expression = "java(formatAmount(receiptDto.totalAmount()))")
     @Mapping(target = "billPdvPrice", expression = "java(formatAmount(receiptDto.taxAmount()))")
     @Mapping(target = "billTotalPrice", expression = "java(formatAmount(receiptDto.grandTotal()))")
@@ -36,6 +38,16 @@ public interface ReceiptBillRequestMapper {
     @Mapping(target = "zki", source = "receiptDto.zki")
     @Mapping(target = "jir", source = "receiptDto.jir")
     BillRequest toBillRequest(ReceiptDto receiptDto, String pdf417Image);
+
+    default List<BillPdfItemDto> toPdfItems(List<ReceiptItemDto> items) {
+        return items == null ? List.of() : items.stream()
+                .map(item -> BillPdfItemDto.builder()
+                        .name(item.name())
+                        .description(item.description())
+                        .basePrice(formatAmount(item.totalPrice()))
+                        .build())
+                .toList();
+    }
 
     default String formatAmount(Double amount) {
         return amount == null ? null : BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',');

@@ -1,5 +1,6 @@
 package hr.bill.spring_bill.service.document;
 
+import hr.bill.spring_bill.dto.web.bill.BillItemRequest;
 import hr.bill.spring_bill.clients.bill_pdf.BillPdfClient;
 import hr.bill.spring_bill.clients.eposlovanje.EposlovanjeClient;
 import hr.bill.spring_bill.clients.eposlovanje.params.DocumentListParams;
@@ -9,6 +10,7 @@ import hr.bill.spring_bill.service.TenantService;
 import hr.bill.spring_bill.dao.BillInfoRepository;
 import hr.bill.spring_bill.dao.BillItemRepository;
 import hr.bill.spring_bill.dao.BillRepository;
+import hr.bill.spring_bill.dto.bill_pdf.common.BillPdfItemDto;
 import hr.bill.spring_bill.dto.bill_pdf.common.InvoiceLineDto;
 import hr.bill.spring_bill.dto.bill_pdf.common.MonetaryTotalDto;
 import hr.bill.spring_bill.dto.bill_pdf.common.TaxSubtotalDto;
@@ -257,8 +259,7 @@ public class F2ReportStrategy implements BillStrategy {
                     .billDate(reportBillRequest.getBillDate())
                     .billTime(reportBillRequest.getBillTime())
                     .dueDate(reportBillRequest.getDueDate())
-                    .name(reportBillRequest.getBillItemName())
-                    .description(reportBillRequest.getBillItemDescription())
+                    .items(reportBillRequest.getItems())
                     .pdvType(reportBillRequest.getVatCategory())
                     .profile(reportBillRequest.getProfile())
                     .orderNumber(reportBillRequest.getOrderNumber())
@@ -333,10 +334,27 @@ public class F2ReportStrategy implements BillStrategy {
     private ComputedAmounts computeAmounts(ReportBillRequest request, Boolean negative) {
         int quantity = negative ? -1 : 1;
         VatCategory vatCat = request.getVatCategory();
-        BigDecimal lineExt = request.getBaseAmount().multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
-        // BT-146 (Item net price) must never be negative per EN16931 BR-27. For a storno the
-        // sign is carried by the invoiced quantity (-1) and the line extension amount, not the price.
-        BigDecimal unitPrice = request.getBaseAmount().abs().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal qty = BigDecimal.valueOf(quantity);
+        List<InvoiceLineDto> lines = new ArrayList<>();
+        BigDecimal lineExt = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (BillItemRequest item : request.getItems()) {
+            BigDecimal itemLineExt = item.baseAmount().multiply(qty).setScale(2, RoundingMode.HALF_UP);
+            // BT-146 (Item net price) must never be negative per EN16931 BR-27. For a storno the
+            // sign is carried by the invoiced quantity (-1) and the line extension amount, not the price.
+            BigDecimal unitPrice = item.baseAmount().abs().setScale(2, RoundingMode.HALF_UP);
+            lines.add(new InvoiceLineDto(
+                    lines.size() + 1,
+                    item.billItemName(),
+                    item.billItemDescription(),
+                    "71.12.20",
+                    String.valueOf(quantity),
+                    "H87",
+                    unitPrice.toPlainString(),
+                    itemLineExt.toPlainString(),
+                    vatCat.getId()
+            ));
+            lineExt = lineExt.add(itemLineExt);
+        }
         BigDecimal taxAmount = lineExt.multiply(vatCat.getRate())
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         BigDecimal taxInclusive = lineExt.add(taxAmount);
@@ -347,18 +365,6 @@ public class F2ReportStrategy implements BillStrategy {
                 lineExt.toPlainString(),
                 taxAmount.toPlainString(),
                 vatCat.getTaxExemptionReason()
-        );
-
-        InvoiceLineDto line = new InvoiceLineDto(
-                1,
-                request.getBillItemName(),
-                request.getBillItemDescription(),
-                "71.12.20",
-                String.valueOf(quantity),
-                "H87",
-                unitPrice.toPlainString(),
-                lineExt.toPlainString(),
-                vatCat.getId()
         );
 
         MonetaryTotalDto monetaryTotal = new MonetaryTotalDto(
@@ -374,7 +380,7 @@ public class F2ReportStrategy implements BillStrategy {
                 String.format("HR00 %d-1-1", request.getBillId()),
                 taxAmount.toPlainString(),
                 List.of(subtotal),
-                List.of(line),
+                lines,
                 monetaryTotal
         );
     }
@@ -520,9 +526,13 @@ public class F2ReportStrategy implements BillStrategy {
         String cur = orig.getDocumentCurrencyCode() != null ? orig.getDocumentCurrencyCode() : "EUR";
         UblPaymentMeans origPm = orig.getPaymentMeans();
         ComputedAmounts computed = computeAmounts(ReportBillRequest.builder()
-                .billItemName(orig.getInvoiceLines().getFirst().getItem().getName())
-                .billItemDescription(orig.getInvoiceLines().getFirst().getItem().getDescription())
-                .baseAmount(new BigDecimal(orig.getLegalMonetaryTotal().getTaxExclusiveAmount().getValue()))
+                .items(orig.getInvoiceLines().stream()
+                        .map(line -> BillItemRequest.builder()
+                                .billItemName(line.getItem().getName())
+                                .billItemDescription(line.getItem().getDescription())
+                                .baseAmount(new BigDecimal(line.getLineExtensionAmount().getValue()).abs())
+                                .build())
+                        .toList())
                 .vatCategory(VatCategory.fromId(orig.getTaxTotal().getTaxSubtotals().getFirst().getTaxCategory().getId()))
                 .build(), Boolean.TRUE);
 
@@ -681,8 +691,13 @@ public class F2ReportStrategy implements BillStrategy {
                 .billBasePrice(computedAmounts.monetaryTotal().taxExclusiveAmount().replace('.', ','))
                 .billPdvPrice(computedAmounts.taxTotalAmount().replace('.', ','))
                 .billTotalPrice(computedAmounts.monetaryTotal().taxInclusiveAmount().replace('.', ','))
-                .billProjectName(request.getBillItemName())
-                .billProjectDescription(request.getBillItemDescription())
+                .items(computedAmounts.lines().stream()
+                        .map(line -> BillPdfItemDto.builder()
+                                .name(line.name())
+                                .description(line.description())
+                                .basePrice(line.lineExtensionAmount().replace('.', ','))
+                                .build())
+                        .toList())
                 .billTotalText(NumberToWordsService.asWords(new BigDecimal(computedAmounts.monetaryTotal().taxInclusiveAmount())))
                 .paymentDays(ChronoUnit.DAYS.between(request.getDueDate(), request.getBillDate()))
                 .recipientName(request.getBuyerName())

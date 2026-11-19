@@ -112,8 +112,8 @@ class F1BillControllerIT extends AbstractIntegrationTest {
                 TEST_TENANT.email(),
                 TEST_TENANT.phone());
         BillItemInfo expectedItemInfo = new BillItemInfo(
-                (String) requestBody.get("billItemName"),
-                (String) requestBody.get("billItemDescription"),
+                "Test item",
+                "Test item description",
                 BigDecimal.ONE, ItemUnitOfMeasure.H87,
                 new BigDecimal("100.00"), new BigDecimal("100.00"), new BigDecimal("125.00"),
                 new BigDecimal("25.00"), BillVatRate.Pdv25, "EUR");
@@ -269,9 +269,10 @@ class F1BillControllerIT extends AbstractIntegrationTest {
         request.put("billTime", "11:00:00");
         request.put("dueDate", LocalDate.now().plusDays(15).toString());
         request.put("buyerOib", "73660371074");
-        request.put("baseAmount", "100.00");
-        request.put("billItemName", "Test item");
-        request.put("billItemDescription", "Test item description");
+        request.put("items", List.of(Map.of(
+                "baseAmount", "100.00",
+                "billItemName", "Test item",
+                "billItemDescription", "Test item description")));
         request.put("buyerName", "Test Buyer");
         request.put("buyerAddress", "Test Street 1");
         request.put("buyerCity", "Zagreb");

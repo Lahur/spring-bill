@@ -1,6 +1,9 @@
 package hr.bill.spring_bill.dto.bill_pdf.request;
 
+import hr.bill.spring_bill.dto.bill_pdf.common.BillPdfItemDto;
 import lombok.Builder;
+
+import java.util.List;
 
 @Builder
 public record BillRequest(
@@ -12,8 +15,7 @@ public record BillRequest(
         String billNumber,
         String billDate,
         String billTime,
-        String billProjectDescription,
-        String billProjectName,
+        List<BillPdfItemDto> items,
         String billBasePrice,
         String billPdvPrice,
         String billTotalPrice,

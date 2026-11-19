@@ -8,6 +8,7 @@ import lombok.Builder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Builder
 @Schema(description = "Response containing bill details for review")
@@ -61,10 +62,7 @@ public record BillReviewResponse(
         @Schema(description = "Type of VAT used on bill", enumAsRef = true, example = "Pdv25")
         VatCategory pdvType,
 
-        @Schema(description = "Name of the bill item", example = "Parking lot")
-        String name,
-
-        @Schema(description = "Description of bill item", example = "Parking lot for Pevex")
-        String description
+        @Schema(description = "Items (lines) of the bill")
+        List<BillItemRequest> items
 ) {
 }

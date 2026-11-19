@@ -20,6 +20,7 @@ import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptListResultDto;
 import hr.bill.spring_bill.dto.eposlovanje.f1_web.response.ReceiptSummaryDto;
 import hr.bill.spring_bill.dto.web.BillReportType;
 import hr.bill.spring_bill.dto.web.bill.BaseBillRequest;
+import hr.bill.spring_bill.dto.web.bill.BillItemRequest;
 import hr.bill.spring_bill.dto.web.bill.BillResponse;
 import hr.bill.spring_bill.dto.web.bill.BillReviewResponse;
 import hr.bill.spring_bill.dto.web.bill.BillSearchParams;
@@ -194,16 +195,18 @@ public class F1OutgoingStrategy implements BillStrategy {
                     .buyerAddress(f1BillRequest.getBuyerAddress())
                     .buyerCity(f1BillRequest.getBuyerCity())
                     .buyerPostalCode(f1BillRequest.getBuyerPostalCode())
-                    .items(List.of(CreateReceiptItemDto.builder()
-                            .name(f1BillRequest.getBillItemName())
-                            .description(f1BillRequest.getBillItemDescription())
-                            .quantity(1.0)
-                            .unitPrice(f1BillRequest.getBaseAmount().doubleValue())
-                            .taxRate(f1BillRequest.getTaxRate())
-                            .unitOfMeasure(UnitOfMeasure.Kom)
-                            .discountAmount(0.0)
-                            .discountPercent(0.0)
-                            .build()))
+                    .items(f1BillRequest.getItems().stream()
+                            .map(item -> CreateReceiptItemDto.builder()
+                                    .name(item.billItemName())
+                                    .description(item.billItemDescription())
+                                    .quantity(1.0)
+                                    .unitPrice(item.baseAmount().doubleValue())
+                                    .taxRate(f1BillRequest.getTaxRate())
+                                    .unitOfMeasure(UnitOfMeasure.Kom)
+                                    .discountAmount(0.0)
+                                    .discountPercent(0.0)
+                                    .build())
+                            .toList())
                     .autoFiscalize(true)
                     .build());
             BillEntity billEntity = repository.save(billEntityMapper.toBillEntity(receiptDto, BillType.F1_BILL));
@@ -249,8 +252,7 @@ public class F1OutgoingStrategy implements BillStrategy {
                     .billDate(f1BillRequest.getBillDate())
                     .billTime(f1BillRequest.getBillTime())
                     .dueDate(f1BillRequest.getDueDate())
-                    .name(f1BillRequest.getBillItemName())
-                    .description(f1BillRequest.getBillItemDescription())
+                    .items(f1BillRequest.getItems())
                     .note(f1BillRequest.getNote())
                     .buyerOib(f1BillRequest.getBuyerOib())
                     .buyerName(f1BillRequest.getBuyerName())
@@ -403,9 +405,14 @@ public class F1OutgoingStrategy implements BillStrategy {
     }
 
     private ComputedAmounts computeAmounts(F1BillRequest request) {
-        BigDecimal baseAmount = request.getBaseAmount().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal taxAmount = baseAmount.multiply(BigDecimal.valueOf(request.getTaxRate().getValue()))
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal taxRate = BigDecimal.valueOf(request.getTaxRate().getValue());
+        BigDecimal baseAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (BillItemRequest item : request.getItems()) {
+            BigDecimal itemBase = item.baseAmount().setScale(2, RoundingMode.HALF_UP);
+            baseAmount = baseAmount.add(itemBase);
+            taxAmount = taxAmount.add(itemBase.multiply(taxRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+        }
         BigDecimal totalAmount = baseAmount.add(taxAmount);
         return new ComputedAmounts(baseAmount, taxAmount, totalAmount);
     }
